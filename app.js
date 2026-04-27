@@ -140,10 +140,10 @@ function processData(rawData) {
             allEnds.push(p[1]);
         });
     });
-    
+
     minYear = Math.min(...allStarts);
     maxYear = Math.max(...allEnds);
-    
+
     currentYear = minYear;
     updateYearDisplay(currentYear);
     updateIndicator(currentYear);
@@ -166,7 +166,7 @@ function processData(rawData) {
 
     // Reset markers
     updateMarkers(currentYear);
-    
+
     // Zoom to fit all points with a 10% border
     const bounds = L.latLngBounds(locations.map(l => [l.latitude, l.longitude]));
     map.fitBounds(bounds.pad(0.1));
@@ -193,10 +193,10 @@ function animationStep(timestamp) {
 
     const elapsed = timestamp - animationStartTime;
     const progress = Math.min(elapsed / totalDuration, 1);
-    
+
     // Update current year
     currentYear = minYear + progress * (maxYear - minYear);
-    
+
     updateYearDisplay(currentYear);
     updateIndicator(currentYear);
     updateMarkers(currentYear);
@@ -222,15 +222,15 @@ const destroyIcon = L.icon({
 // 4. Update Map Markers
 function updateMarkers(year) {
     markerGroup.clearLayers();
-    
+
     let count = 0;
     locations.forEach(loc => {
         // Show if current year is within ANY of the periods
         const activePeriod = loc.periods.find(p => year >= p[0] && year <= p[1]);
-        
+
         if (activePeriod) {
             const marker = L.marker([loc.latitude, loc.longitude], { icon: destroyIcon });
-            
+
             // Build periods string for popup
             const periodsHtml = loc.periods
                 .map(p => `<li>${p[0]} to ${p[1]}</li>`)
@@ -249,7 +249,7 @@ function updateMarkers(year) {
                     </div>
                 </div>
             `);
-            
+
             markerGroup.addLayer(marker);
             count++;
         }
