@@ -1,0 +1,231 @@
+:root {
+    --bg-dark: #0f172a;
+    --panel-bg: rgba(255, 255, 255, 0.05);
+    --accent-primary: #3b82f6;
+    --accent-secondary: #10b981;
+    --text-main: #f8fafc;
+    --text-dim: #94a3b8;
+    --border-color: rgba(255, 255, 255, 0.1);
+    --ruler-height: 10px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    overflow: hidden; /* Prevent scrolling since it's a full-screen app */
+}
+
+h1 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.8rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+}
+
+.subtitle {
+    font-size: 0.8rem;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 600;
+}
+
+.app-container {
+    display: grid;
+    grid-template-areas: 
+        "sidebar map"
+        "footer footer";
+    grid-template-columns: 20% 80%;
+    grid-template-rows: 90vh 10vh;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    grid-area: sidebar;
+    background: var(--panel-bg);
+    backdrop-filter: blur(12px);
+    border-right: 1px solid var(--border-color);
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    z-index: 10;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.btn {
+    padding: 1rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+}
+
+.btn.primary {
+    background: var(--accent-primary);
+    color: white;
+}
+
+.btn.primary:hover {
+    background: #2563eb;
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+}
+
+.btn.secondary {
+    background: var(--accent-secondary);
+    color: white;
+}
+
+.btn.secondary:hover:not(:disabled) {
+    background: #059669;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+}
+
+.btn.danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn.danger:hover:not(:disabled) {
+    background: #dc2626;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+}
+
+.button-row {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.button-row .btn {
+    flex: 1;
+}
+
+.btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+/* Table */
+.table-container {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: rgba(0,0,0,0.2);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+th, td {
+    padding: 0.8rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+th {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-dim);
+    position: sticky;
+    top: 0;
+}
+
+/* Map Area */
+#map {
+    grid-area: map;
+    width: 100%;
+    height: 100%;
+    background: #111; /* Fallback */
+}
+
+/* Bottom Footer (Ruler) */
+.time-ruler-strip {
+    grid-area: footer;
+    background: #020617;
+    border-top: 1px solid var(--border-color);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    gap: 3rem;
+}
+
+.year-display {
+    min-width: 150px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 1.2rem;
+}
+
+#current-year-value {
+    color: var(--accent-primary);
+    font-weight: 700;
+}
+
+#time-ruler-container {
+    flex: 1;
+    height: 40px;
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#time-ruler {
+    width: 100%;
+    height: var(--ruler-height);
+    background: rgba(255,255,255,0.1);
+    border-radius: 5px;
+    position: relative;
+}
+
+#ruler-line {
+    width: 100%;
+    height: 2px;
+    background: rgba(59, 130, 246, 0.3);
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+#time-indicator {
+    width: 3px;
+    height: 40px;
+    background: var(--accent-primary);
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--accent-primary);
+    z-index: 5;
+    pointer-events: none;
+    left: 0%; /* Will be animated */
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 10px;
+}

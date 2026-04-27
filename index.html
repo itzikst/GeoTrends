@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoTrends | Roman Decapolis Visualization</title>
+    <meta name="description" content="Explore geographic trends over time with our interactive Roman Decapolis map.">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Panel: Controls and Table -->
+        <aside class="sidebar">
+            <header>
+                <h1>GeoTrends</h1>
+                <p class="subtitle">Temporal Geography</p>
+            </header>
+            
+            <div class="control-group">
+                <input type="file" id="csv-upload" accept=".csv" hidden>
+                <button id="upload-btn" class="btn primary">Upload CSV</button>
+                <div class="button-row">
+                    <button id="run-btn" class="btn secondary" disabled>Run Animation</button>
+                    <button id="stop-btn" class="btn danger" disabled>Stop</button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table id="data-table">
+                    <thead>
+                        <tr>
+                            <th>Location Name</th>
+                            <th>Start</th>
+                            <th>End</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </aside>
+
+        <!-- Main Map Area -->
+        <main id="map"></main>
+
+        <!-- Bottom Time Ruler Strip -->
+        <footer class="time-ruler-strip">
+            <div class="year-display">
+                <span id="current-year-label">Current Year: </span>
+                <span id="current-year-value">-</span>
+            </div>
+            <div id="time-ruler-container">
+                <div id="time-ruler">
+                    <div id="time-indicator"></div>
+                    <div id="ruler-line"></div>
+                    <div id="ruler-markers"></div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Main Application Logic -->
+    <script src="app.js"></script>
+</body>
+</html>
