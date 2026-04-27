@@ -211,13 +211,22 @@ function animationStep(timestamp) {
     }
 }
 
-// Define Custom Icon
+// Define Custom Icons
+const starIcon = L.icon({
+    iconUrl: 'star.png',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
+});
+
 const destroyIcon = L.icon({
     iconUrl: 'destroy.jpg',
-    iconSize: [32, 32], // Size of the icon
-    iconAnchor: [16, 32], // Point of the icon which will correspond to marker's location
-    popupAnchor: [0, -32], // Point from which the popup should open relative to the iconAnchor
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -16],
 });
+
+const DESTROY_THRESHOLD = 10; // Years before hiding to show destruction icon
 
 // 4. Update Map Markers
 function updateMarkers(year) {
@@ -229,7 +238,10 @@ function updateMarkers(year) {
         const activePeriod = loc.periods.find(p => year >= p[0] && year <= p[1]);
 
         if (activePeriod) {
-            const marker = L.marker([loc.latitude, loc.longitude], { icon: destroyIcon });
+            const isNearEnd = (activePeriod[1] - year) <= DESTROY_THRESHOLD;
+            const currentIcon = isNearEnd ? destroyIcon : starIcon;
+            
+            const marker = L.marker([loc.latitude, loc.longitude], { icon: currentIcon });
 
             // Build periods string for popup
             const periodsHtml = loc.periods
