@@ -92,26 +92,57 @@ fileInput.addEventListener('change', (event) => {
 });
 
 function processData(rawData) {
-    // Normalize data: trim keys and lowercase them to handle variability
-    locations = rawData.map(row => {
+    // 1. Group by name and merge periods
+    const locationMap = new Map();
+
+    rawData.forEach(row => {
+        // Normalize keys
         const normalized = {};
         for (let key in row) {
             normalized[key.toLowerCase().trim()] = row[key];
         }
-        return normalized;
+
+        const name = normalized['location name'];
+        if (!name || !normalized['latitude'] || !normalized['longitude']) return;
+
+        const start = Number(normalized['start year']);
+        const end = Number(normalized['end time']);
+
+        if (locationMap.has(name)) {
+            // Already exists, just add the period
+            locationMap.get(name).periods.push([start, end]);
+        } else {
+            // New location
+            const locObj = {
+                ...normalized,
+                periods: [[start, end]]
+            };
+            // Remove the single start/end properties to avoid confusion
+            delete locObj['start year'];
+            delete locObj['end time'];
+            locationMap.set(name, locObj);
+        }
     });
 
-    // Filter out truly invalid rows
-    locations = locations.filter(row => row['location name'] && row['latitude'] && row['longitude']);
+    locations = Array.from(locationMap.values());
 
     if (locations.length === 0) {
         alert('Invalid CSV data structure. Please use columns: location name, latitude, longitude, start year, end time, title, description');
         return;
     }
 
-    // Compute min/max year
-    minYear = Math.min(...locations.map(l => l['start year'] || 0));
-    maxYear = Math.max(...locations.map(l => l['end time'] || 0));
+    // 2. Compute global min/max year
+    let allStarts = [];
+    let allEnds = [];
+    locations.forEach(l => {
+        l.periods.forEach(p => {
+            allStarts.push(p[0]);
+            allEnds.push(p[1]);
+        });
+    });
+    
+    minYear = Math.min(...allStarts);
+    maxYear = Math.max(...allEnds);
     
     currentYear = minYear;
     updateYearDisplay(currentYear);
@@ -120,14 +151,15 @@ function processData(rawData) {
     // Enable Run button
     runBtn.disabled = false;
 
-    // Populate table
+    // Populate table (showing first period as representative)
     dataTableBody.innerHTML = '';
-    locations.slice(0, 15).forEach(row => {
+    locations.slice(0, 15).forEach(loc => {
         const tr = document.createElement('tr');
+        const firstP = loc.periods[0];
         tr.innerHTML = `
-            <td>${row['location name']}</td>
-            <td>${row['start year']}</td>
-            <td>${row['end time']}</td>
+            <td>${loc['location name']} ${loc.periods.length > 1 ? `(${loc.periods.length} periods)` : ''}</td>
+            <td>${firstP[0]}</td>
+            <td>${firstP[1]}</td>
         `;
         dataTableBody.appendChild(tr);
     });
@@ -193,19 +225,28 @@ function updateMarkers(year) {
     
     let count = 0;
     locations.forEach(loc => {
-        const start = Number(loc['start year']);
-        const end = Number(loc['end time']);
+        // Show if current year is within ANY of the periods
+        const activePeriod = loc.periods.find(p => year >= p[0] && year <= p[1]);
         
-        // Show if current year is between start and end
-        if (year >= start && year <= end) {
+        if (activePeriod) {
             const marker = L.marker([loc.latitude, loc.longitude], { icon: destroyIcon });
             
+            // Build periods string for popup
+            const periodsHtml = loc.periods
+                .map(p => `<li>${p[0]} to ${p[1]}</li>`)
+                .join('');
+
             // Add popup with Title & Description
             marker.bindPopup(`
-                <div style="font-family: inherit">
+                <div style="font-family: inherit; min-width: 150px;">
                     <h3 style="margin:0">${loc.title}</h3>
                     <p style="margin:5px 0; font-size: 12px; color: #555;">${loc.description}</p>
-                    <small>Period: ${start} to ${end}</small>
+                    <div style="font-size: 11px; margin-top: 8px; border-top: 1px solid #eee; padding-top: 5px;">
+                        <strong>Historical Periods:</strong>
+                        <ul style="margin: 5px 0; padding-left: 15px;">
+                            ${periodsHtml}
+                        </ul>
+                    </div>
                 </div>
             `);
             
