@@ -48,15 +48,15 @@ const map = L.map('map', {
     maxZoom: 18 // Explicitly allow map zooming up to level 18
 }).setView([32.5, 36.0], 8); // Center on Decapolis Region
 
-// Bottom Layer: CartoDB Voyager (Provides clean land colors and blue water without labels)
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20
+// Bottom Layer: ESRI World Ocean Base (Provides natural land/water colors without modern roads or labels)
+// We use maxNativeZoom because this legacy service stops providing tiles at level 11.
+L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
+    maxNativeZoom: 11, 
+    maxZoom: 18,
+    attribution: 'Tiles &copy; Esri &mdash; Sources: GEBCO, NOAA, CHS, OSU, UNH, CSUMB, National Geographic, DeLorme, NAVTEQ, and Esri'
 }).addTo(map);
 
-// Top Layer: ESRI World Hillshade (Provides the 3D relief information)
-// We use a CSS blend mode (multiply) to combine the 3D shading with the colors below.
+// Top Layer: ESRI World Hillshade (Provides the sharp 3D relief information)
 L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
     maxZoom: 16,
     attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USGS, NGA, NASA, CGIAR, N Robinson, NCEAS, NLS, OS, NMA, Geodatastyrelsen, Rijkswaterstaat, GSA, Geoland, FEMA, Intermap and the GIS user community',
