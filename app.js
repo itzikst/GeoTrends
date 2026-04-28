@@ -47,7 +47,7 @@ const updateIndicator = (year) => {
 const map = L.map('map').setView([32.5, 36.0], 8); // Center on Decapolis Region
 
 // Add ESRI World Terrain Base layer
-L.tileLayer(`https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
+L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
     maxZoom: 13, // World Terrain Base only has detailed tiles up to zoom ~13
     attribution: 'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS'
 }).addTo(map);
