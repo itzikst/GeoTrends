@@ -46,10 +46,10 @@ const updateIndicator = (year) => {
 // 1. Initialize Leaflet Map
 const map = L.map('map').setView([32.5, 36.0], 8); // Center on Decapolis Region
 
-// Add OpenTopoMap layer (Topographic style)
-L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    maxZoom: 17,
-    attribution: 'Map: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> | Data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+// Add ESRI World Terrain Base layer
+L.tileLayer(`https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
+    maxZoom: 13, // World Terrain Base only has detailed tiles up to zoom ~13
+    attribution: 'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS'
 }).addTo(map);
 
 // Layer Group to store active markers
