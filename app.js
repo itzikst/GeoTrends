@@ -48,12 +48,9 @@ const map = L.map('map', {
     maxZoom: 18 // Explicitly allow map zooming up to level 18
 }).setView([32.5, 36.0], 8); // Center on Decapolis Region
 
-// Add ESRI World Terrain Base layer (Relief + blue water, no labels)
-// Using maxNativeZoom prevents the "Map not available" error by stretching the highest available tiles.
-L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
-    maxNativeZoom: 9,  // The server stops having detailed tiles for the Middle East at zoom 9
-    maxZoom: 18,       // Leaflet will stretch the level 9 tiles for deeper zooms
-    attribution: 'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS'
+// Add ESRI Vector Terrain Base layer (Relief + blue water, no labels, crisp zoom)
+L.esri.Vector.vectorBasemapLayer("ArcGIS:Terrain:Base", {
+    apiKey: ESRI_API_KEY
 }).addTo(map);
 
 // Layer Group to store active markers
