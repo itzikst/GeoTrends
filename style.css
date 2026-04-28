@@ -161,6 +161,11 @@ th {
     height: 100%;
 }
 
+.hillshade-layer {
+    mix-blend-mode: multiply;
+    opacity: 0.8;
+}
+
 #map {
     width: 100%;
     height: 100%;
