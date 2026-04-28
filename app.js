@@ -44,7 +44,9 @@ const updateIndicator = (year) => {
 };
 
 // 1. Initialize Leaflet Map
-const map = L.map('map').setView([32.5, 36.0], 8); // Center on Decapolis Region
+const map = L.map('map', {
+    maxZoom: 18 // Explicitly allow map zooming up to level 18
+}).setView([32.5, 36.0], 8); // Center on Decapolis Region
 
 // Add ESRI World Terrain Base layer (Relief + blue water, no labels)
 // Using maxNativeZoom prevents the "Map not available" error by stretching the highest available tiles.
