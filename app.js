@@ -103,7 +103,8 @@ function processData(rawData) {
         }
 
         const name = normalized['location name'];
-        if (!name || !normalized['latitude'] || !normalized['longitude']) return;
+        const isFooter = name && name.toLowerCase() === 'footer';
+        if (!name || (!isFooter && (!normalized['latitude'] || !normalized['longitude']))) return;
 
         const start = Number(normalized['start year']);
         const end = Number(normalized['end time']);
@@ -153,7 +154,8 @@ function processData(rawData) {
 
     // Populate table (showing first period as representative)
     dataTableBody.innerHTML = '';
-    locations.slice(0, 15).forEach(loc => {
+    const visibleLocations = locations.filter(loc => loc['location name'].toLowerCase() !== 'footer');
+    visibleLocations.slice(0, 15).forEach(loc => {
         const tr = document.createElement('tr');
         const firstP = loc.periods[0];
         tr.innerHTML = `
@@ -168,8 +170,10 @@ function processData(rawData) {
     updateMarkers(currentYear);
 
     // Zoom to fit all points with a 10% border
-    const bounds = L.latLngBounds(locations.map(l => [l.latitude, l.longitude]));
-    map.fitBounds(bounds.pad(0.1));
+    if (visibleLocations.length > 0) {
+        const bounds = L.latLngBounds(visibleLocations.map(l => [l.latitude, l.longitude]));
+        map.fitBounds(bounds.pad(0.1));
+    }
 }
 
 // 3. Animation Logic
@@ -231,11 +235,20 @@ const DESTROY_THRESHOLD = 10; // Years before hiding to show destruction icon
 // 4. Update Map Markers
 function updateMarkers(year) {
     markerGroup.clearLayers();
+    const mapFooter = document.getElementById('map-footer');
+    let footerText = '';
 
     let count = 0;
     locations.forEach(loc => {
         // Show if current year is within ANY of the periods
         const activePeriod = loc.periods.find(p => year >= p[0] && year <= p[1]);
+
+        if (loc['location name'].toLowerCase() === 'footer') {
+            if (activePeriod) {
+                footerText = loc.description || loc.title || '';
+            }
+            return; // Skip normal marker logic
+        }
 
         if (activePeriod) {
             const isNearEnd = (activePeriod[1] - year) <= DESTROY_THRESHOLD;
@@ -266,5 +279,13 @@ function updateMarkers(year) {
             count++;
         }
     });
+    
+    if (footerText) {
+        mapFooter.textContent = footerText;
+        mapFooter.style.display = 'block';
+    } else {
+        mapFooter.style.display = 'none';
+    }
+
     console.log(`Updated markers for year ${Math.round(year)}. Count: ${count}`);
 }
