@@ -51,8 +51,8 @@ const map = L.map('map', {
 // Add ESRI World Terrain Base layer (Relief + blue water, no labels)
 // Using maxNativeZoom prevents the "Map not available" error by stretching the highest available tiles.
 L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
-    maxNativeZoom: 13, // The server stops having tiles here
-    maxZoom: 18,       // Leaflet will stretch the level 13 tiles for deeper zooms
+    maxNativeZoom: 9,  // The server stops having detailed tiles for the Middle East at zoom 9
+    maxZoom: 18,       // Leaflet will stretch the level 9 tiles for deeper zooms
     attribution: 'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS'
 }).addTo(map);
 
