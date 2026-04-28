@@ -46,10 +46,10 @@ const updateIndicator = (year) => {
 // 1. Initialize Leaflet Map
 const map = L.map('map').setView([32.5, 36.0], 8); // Center on Decapolis Region
 
-// Add ESRI Dark Gray Canvas Base layer (Clean, minimalistic, no labels)
-L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
+// Add ESRI World Hillshade layer (Terrain relief, no labels)
+L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
     maxZoom: 16, 
-    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+    attribution: 'Tiles &copy; Esri &mdash; Esri, USGS, NGA, NASA, CGIAR, N Robinson, NCEAS, NLS, OS, NMA, Geodatastyrelsen, Rijkswaterstaat, GSA, Geoland, FEMA, Intermap and the GIS user community'
 }).addTo(map);
 
 // Layer Group to store active markers
