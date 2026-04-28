@@ -46,10 +46,10 @@ const updateIndicator = (year) => {
 // 1. Initialize Leaflet Map
 const map = L.map('map').setView([32.5, 36.0], 8); // Center on Decapolis Region
 
-// Add ESRI World Terrain Base layer
-L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
-    maxZoom: 13, // World Terrain Base only has detailed tiles up to zoom ~13
-    attribution: 'Tiles &copy; Esri &mdash; Source: USGS, Esri, TANA, DeLorme, and NPS'
+// Add ESRI World Topo Map layer (Supports higher zoom levels)
+L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
+    maxZoom: 18, 
+    attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
 }).addTo(map);
 
 // Layer Group to store active markers
