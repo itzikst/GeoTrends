@@ -39,8 +39,14 @@ const currentYearValue = document.getElementById('current-year-value');
 const timeIndicator = document.getElementById('time-indicator');
 
 // UI Helpers
+function formatYearLabel(year) {
+    if (year < 0) return Math.abs(year) + ' BC';
+    if (year > 0) return year; // optionally add AD
+    return '0';
+}
+
 const updateYearDisplay = (year) => {
-    currentYearValue.textContent = Math.round(year);
+    currentYearValue.textContent = formatYearLabel(Math.round(year));
 };
 
 const updateIndicator = (year) => {
@@ -168,6 +174,7 @@ function processData(rawData) {
     elapsedTime = 0;
     updateYearDisplay(currentYear);
     updateIndicator(currentYear);
+    drawRulerMarkers(minYear, maxYear);
 
     // Enable buttons
     playPauseBtn.disabled = false;
@@ -308,6 +315,32 @@ const destroyIcon = L.icon({
 });
 
 const DESTROY_THRESHOLD = 10; // Years before hiding to show destruction icon
+
+function drawRulerMarkers(minY, maxY) {
+    const markersContainer = document.getElementById('ruler-markers');
+    markersContainer.innerHTML = '';
+    
+    const range = maxY - minY;
+    if (range <= 0) return;
+
+    // Find the first multiple of 100 >= minY
+    const startCentury = Math.ceil(minY / 100) * 100;
+    
+    for (let y = startCentury; y <= maxY; y += 100) {
+        const percentage = ((y - minY) / range) * 100;
+        
+        const marker = document.createElement('div');
+        marker.className = 'ruler-tick';
+        marker.style.left = `${percentage}%`;
+        
+        const label = document.createElement('div');
+        label.className = 'ruler-label';
+        label.textContent = formatYearLabel(y);
+        
+        marker.appendChild(label);
+        markersContainer.appendChild(marker);
+    }
+}
 
 // 4. Update Map Markers
 function updateMarkers(year) {

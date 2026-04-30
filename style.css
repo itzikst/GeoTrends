@@ -284,6 +284,35 @@ th {
     transform: translateY(-50%);
 }
 
+#ruler-markers {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}
+
+.ruler-tick {
+    position: absolute;
+    width: 2px;
+    height: 12px;
+    background: rgba(255, 255, 255, 0.4);
+    top: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.ruler-label {
+    position: absolute;
+    top: 15px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    white-space: nowrap;
+    font-family: 'Outfit', sans-serif;
+}
+
 #time-indicator {
     width: 3px;
     height: 40px;
