@@ -110,13 +110,44 @@ h1 {
     box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
 }
 
-.button-row {
+.player-controls {
     display: flex;
     gap: 0.5rem;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 0.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 
-.button-row .btn {
+.icon-btn {
     flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem;
+    background: transparent;
+    color: var(--text-main);
+}
+
+.icon-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.icon-btn.primary {
+    background: var(--accent-primary);
+}
+
+.icon-btn.primary:hover:not(:disabled) {
+    background: #2563eb;
+}
+
+.icon-btn.danger {
+    color: #ef4444;
+}
+
+.icon-btn.danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.2);
 }
 
 .btn:disabled {

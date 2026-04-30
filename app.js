@@ -20,14 +20,19 @@ let minYear = 0;
 let maxYear = 0;
 let currentYear = 0;
 let isRunning = false;
-let animationStartTime = null;
+let lastTimestamp = 0;
+let elapsedTime = 0;
+let eventYears = [];
 const totalDuration = 60000; // 60 seconds in ms
 
 // DOM Elements
 const uploadBtn = document.getElementById('upload-btn');
 const fileInput = document.getElementById('csv-upload');
 const runBtn = document.getElementById('run-btn');
-const stopBtn = document.getElementById('stop-btn');
+const pauseBtn = document.getElementById('pause-btn');
+const resetBtn = document.getElementById('reset-btn');
+const prevBtn = document.getElementById('prev-btn');
+const nextBtn = document.getElementById('next-btn');
 const dataTableBody = document.querySelector('#data-table tbody');
 const currentYearValue = document.getElementById('current-year-value');
 const timeIndicator = document.getElementById('time-indicator');
@@ -69,7 +74,7 @@ const markerGroup = L.layerGroup().addTo(map);
 uploadBtn.addEventListener('click', () => fileInput.click());
 
 // Auto-load decapolis.csv if it exists
-fetch('decapolis.csv')
+fetch('iron_age_cities.csv')
     .then(response => {
         if (response.ok) return response.text();
         throw new Error('Default CSV not found');
@@ -155,12 +160,20 @@ function processData(rawData) {
     minYear = Math.min(...allStarts);
     maxYear = Math.max(...allEnds);
 
+    // Create sorted array of unique event years for hopping
+    eventYears = Array.from(new Set([...allStarts, ...allEnds])).sort((a, b) => a - b);
+
     currentYear = minYear;
+    elapsedTime = 0;
     updateYearDisplay(currentYear);
     updateIndicator(currentYear);
 
     // Enable Run button
     runBtn.disabled = false;
+    pauseBtn.disabled = true;
+    resetBtn.disabled = false;
+    nextBtn.disabled = false;
+    prevBtn.disabled = false;
 
     // Populate table (showing first period as representative)
     dataTableBody.innerHTML = '';
@@ -188,40 +201,84 @@ function processData(rawData) {
 
 // 3. Animation Logic
 runBtn.addEventListener('click', () => {
-    if (isRunning) return;
+    if (isRunning || currentYear >= maxYear) return;
     isRunning = true;
-    animationStartTime = performance.now();
+    lastTimestamp = performance.now();
     runBtn.disabled = true;
-    stopBtn.disabled = false;
+    pauseBtn.disabled = false;
     requestAnimationFrame(animationStep);
 });
 
-stopBtn.addEventListener('click', () => {
-    isRunning = false;
-    stopBtn.disabled = true;
-    runBtn.disabled = false;
+pauseBtn.addEventListener('click', () => {
+    pauseAnimation();
 });
+
+function pauseAnimation() {
+    isRunning = false;
+    pauseBtn.disabled = true;
+    if (currentYear < maxYear) runBtn.disabled = false;
+}
+
+resetBtn.addEventListener('click', () => {
+    pauseAnimation();
+    currentYear = minYear;
+    elapsedTime = 0;
+    runBtn.disabled = false;
+    syncUI();
+});
+
+nextBtn.addEventListener('click', () => {
+    pauseAnimation();
+    const nextYear = eventYears.find(y => y > currentYear);
+    if (nextYear !== undefined) {
+        currentYear = nextYear;
+        syncElapsedTime();
+        syncUI();
+    }
+});
+
+prevBtn.addEventListener('click', () => {
+    pauseAnimation();
+    // Find largest event year strictly less than currentYear
+    const prevYear = [...eventYears].reverse().find(y => y < currentYear);
+    if (prevYear !== undefined) {
+        currentYear = prevYear;
+        syncElapsedTime();
+        syncUI();
+        runBtn.disabled = false;
+    }
+});
+
+function syncElapsedTime() {
+    if (maxYear === minYear) return;
+    const progress = (currentYear - minYear) / (maxYear - minYear);
+    elapsedTime = progress * totalDuration;
+}
+
+function syncUI() {
+    updateYearDisplay(currentYear);
+    updateIndicator(currentYear);
+    updateMarkers(currentYear);
+}
 
 function animationStep(timestamp) {
     if (!isRunning) return;
 
-    const elapsed = timestamp - animationStartTime;
-    const progress = Math.min(elapsed / totalDuration, 1);
+    const delta = timestamp - lastTimestamp;
+    lastTimestamp = timestamp;
+    elapsedTime += delta;
+    
+    const progress = Math.min(elapsedTime / totalDuration, 1);
 
     // Update current year
     currentYear = minYear + progress * (maxYear - minYear);
-
-    updateYearDisplay(currentYear);
-    updateIndicator(currentYear);
-    updateMarkers(currentYear);
+    syncUI();
 
     if (progress < 1) {
         requestAnimationFrame(animationStep);
     } else {
-        isRunning = false;
-        runBtn.disabled = false;
-        stopBtn.disabled = true;
-        alert('Animation Completed');
+        pauseAnimation();
+        runBtn.disabled = true;
     }
 }
 
@@ -250,20 +307,21 @@ function updateMarkers(year) {
 
     let count = 0;
     locations.forEach(loc => {
-        // Show if current year is within ANY of the periods
-        const activePeriod = loc.periods.find(p => year >= p[0] && year <= p[1]);
-
         if (loc['location name'].toLowerCase() === 'footer') {
-            if (activePeriod) {
+            // Footer specifically disappears exactly ON its end year
+            const footerActive = loc.periods.find(p => year >= p[0] && year < p[1]);
+            if (footerActive) {
                 footerText = loc.description || loc.title || '';
             }
             return; // Skip normal marker logic
         }
 
+        // Show normal locations if current year is within ANY of their periods
+        const activePeriod = loc.periods.find(p => year >= p[0] && year <= p[1]);
         if (activePeriod) {
             const isNearEnd = (activePeriod[1] - year) <= DESTROY_THRESHOLD;
             const currentIcon = isNearEnd ? destroyIcon : starIcon;
-            
+
             const marker = L.marker([loc.latitude, loc.longitude], { icon: currentIcon });
 
             // Build periods string for popup
@@ -289,7 +347,7 @@ function updateMarkers(year) {
             count++;
         }
     });
-    
+
     if (footerText) {
         mapFooter.textContent = footerText;
         mapFooter.style.display = 'block';
