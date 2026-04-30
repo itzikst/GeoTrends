@@ -366,6 +366,14 @@ function updateMarkers(year) {
 
             const marker = L.marker([loc.latitude, loc.longitude], { icon: currentIcon });
 
+            // Add permanent label under the icon
+            marker.bindTooltip(loc['location name'], {
+                permanent: true,
+                direction: 'bottom',
+                className: 'map-label',
+                offset: [8, 20] // Offset adjusted for icon anchor
+            });
+
             // Build periods string for popup
             const periodsHtml = loc.periods
                 .map(p => `<li>${p[0]} to ${p[1]}</li>`)

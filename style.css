@@ -236,6 +236,22 @@ th {
     font-weight: 400;
 }
 
+/* Permanent Map Labels */
+.map-label {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    color: var(--text-main);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-shadow: 1px 1px 3px black, -1px -1px 3px black, 1px -1px 3px black, -1px 1px 3px black;
+    font-family: 'Inter', sans-serif;
+    pointer-events: none;
+}
+.leaflet-tooltip-bottom.map-label::before {
+    display: none; /* Hide the leaflet triangle pointer */
+}
+
 /* Bottom Footer (Ruler) */
 .time-ruler-strip {
     background: #020617;
