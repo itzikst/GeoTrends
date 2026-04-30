@@ -330,7 +330,12 @@ function updateMarkers(year) {
         // Show normal locations if current year is within ANY of their periods
         const activePeriod = loc.periods.find(p => year >= p[0] && year <= p[1]);
         if (activePeriod) {
-            const isNearEnd = (activePeriod[1] - year) <= DESTROY_THRESHOLD;
+            // Calculate a dynamic threshold: max 10 years, but never more than half the period's total lifespan.
+            // This prevents locations with short lifespans (like Tirtsa's 10 years) from starting immediately with a destroy icon.
+            const lifespan = activePeriod[1] - activePeriod[0];
+            const dynamicThreshold = Math.min(DESTROY_THRESHOLD, lifespan / 2);
+            
+            const isNearEnd = (activePeriod[1] - year) <= dynamicThreshold;
             const currentIcon = isNearEnd ? destroyIcon : starIcon;
 
             const marker = L.marker([loc.latitude, loc.longitude], { icon: currentIcon });
