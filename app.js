@@ -26,10 +26,10 @@ let eventYears = [];
 const totalDuration = 60000; // 60 seconds in ms
 
 // DOM Elements
-const uploadBtn = document.getElementById('upload-btn');
 const fileInput = document.getElementById('csv-upload');
-const runBtn = document.getElementById('run-btn');
-const pauseBtn = document.getElementById('pause-btn');
+const playPauseBtn = document.getElementById('play-pause-btn');
+const playIcon = playPauseBtn.querySelector('.play-icon');
+const pauseIcon = playPauseBtn.querySelector('.pause-icon');
 const resetBtn = document.getElementById('reset-btn');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
@@ -118,20 +118,20 @@ function processData(rawData) {
         }
 
         const name = normalized['location name'];
-        const isFooter = name && name.toLowerCase() === 'footer';
+        const isFooter = name && name.toLowerCase().trim() === 'footer';
         if (!name || (!isFooter && (!normalized['latitude'] || !normalized['longitude']))) return;
 
         const start = Number(normalized['start year']);
         const end = Number(normalized['end time']);
 
         if (locationMap.has(name)) {
-            // Already exists, just add the period
-            locationMap.get(name).periods.push([start, end]);
+            // Already exists, just add the period with its own title/description
+            locationMap.get(name).periods.push([start, end, normalized.title, normalized.description]);
         } else {
             // New location
             const locObj = {
                 ...normalized,
-                periods: [[start, end]]
+                periods: [[start, end, normalized.title, normalized.description]]
             };
             // Remove the single start/end properties to avoid confusion
             delete locObj['start year'];
@@ -168,9 +168,8 @@ function processData(rawData) {
     updateYearDisplay(currentYear);
     updateIndicator(currentYear);
 
-    // Enable Run button
-    runBtn.disabled = false;
-    pauseBtn.disabled = true;
+    // Enable buttons
+    playPauseBtn.disabled = false;
     resetBtn.disabled = false;
     nextBtn.disabled = false;
     prevBtn.disabled = false;
@@ -200,30 +199,42 @@ function processData(rawData) {
 }
 
 // 3. Animation Logic
-runBtn.addEventListener('click', () => {
+
+function setPlayState(playing) {
+    if (playing) {
+        playIcon.style.display = 'none';
+        pauseIcon.style.display = 'block';
+    } else {
+        playIcon.style.display = 'block';
+        pauseIcon.style.display = 'none';
+    }
+}
+
+playPauseBtn.addEventListener('click', () => {
+    if (isRunning) {
+        pauseAnimation();
+    } else {
+        startAnimation();
+    }
+});
+
+function startAnimation() {
     if (isRunning || currentYear >= maxYear) return;
     isRunning = true;
     lastTimestamp = performance.now();
-    runBtn.disabled = true;
-    pauseBtn.disabled = false;
+    setPlayState(true);
     requestAnimationFrame(animationStep);
-});
-
-pauseBtn.addEventListener('click', () => {
-    pauseAnimation();
-});
+}
 
 function pauseAnimation() {
     isRunning = false;
-    pauseBtn.disabled = true;
-    if (currentYear < maxYear) runBtn.disabled = false;
+    setPlayState(false);
 }
 
 resetBtn.addEventListener('click', () => {
     pauseAnimation();
     currentYear = minYear;
     elapsedTime = 0;
-    runBtn.disabled = false;
     syncUI();
 });
 
@@ -245,7 +256,6 @@ prevBtn.addEventListener('click', () => {
         currentYear = prevYear;
         syncElapsedTime();
         syncUI();
-        runBtn.disabled = false;
     }
 });
 
@@ -278,7 +288,6 @@ function animationStep(timestamp) {
         requestAnimationFrame(animationStep);
     } else {
         pauseAnimation();
-        runBtn.disabled = true;
     }
 }
 
@@ -307,11 +316,12 @@ function updateMarkers(year) {
 
     let count = 0;
     locations.forEach(loc => {
-        if (loc['location name'].toLowerCase() === 'footer') {
+        if (loc['location name'].toLowerCase().trim() === 'footer') {
             // Footer specifically disappears exactly ON its end year
             const footerActive = loc.periods.find(p => year >= p[0] && year < p[1]);
             if (footerActive) {
-                footerText = loc.description || loc.title || '';
+                // p is [start, end, title, description]
+                footerText = footerActive[3] || footerActive[2] || '';
             }
             return; // Skip normal marker logic
         }
@@ -329,11 +339,15 @@ function updateMarkers(year) {
                 .map(p => `<li>${p[0]} to ${p[1]}</li>`)
                 .join('');
 
+            // Use the active period's title and description if available, otherwise fallback
+            const title = activePeriod[2] || loc.title || '';
+            const desc = activePeriod[3] || loc.description || '';
+
             // Add popup with Title & Description
             marker.bindPopup(`
                 <div style="font-family: inherit; min-width: 150px;">
-                    <h3 style="margin:0">${loc.title}</h3>
-                    <p style="margin:5px 0; font-size: 12px; color: #555;">${loc.description}</p>
+                    <h3 style="margin:0">${title}</h3>
+                    <p style="margin:5px 0; font-size: 12px; color: #555;">${desc}</p>
                     <div style="font-size: 11px; margin-top: 8px; border-top: 1px solid #eee; padding-top: 5px;">
                         <strong>Historical Periods:</strong>
                         <ul style="margin: 5px 0; padding-left: 15px;">
