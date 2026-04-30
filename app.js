@@ -26,6 +26,7 @@ let eventYears = [];
 const totalDuration = 60000; // 60 seconds in ms
 
 // DOM Elements
+const uploadBtn = document.getElementById('upload-btn');
 const fileInput = document.getElementById('csv-upload');
 const playPauseBtn = document.getElementById('play-pause-btn');
 const playIcon = playPauseBtn.querySelector('.play-icon');
