@@ -1,50 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoTrends | Roman Decapolis Visualization</title>
+    <title>GeoArcheology | Roman Decapolis Visualization</title>
     <meta name="description" content="Explore geographic trends over time with our interactive Roman Decapolis map.">
-    
+
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Outfit:wght@400;700&display=swap"
+        rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Left Panel: Controls and Table -->
         <aside class="sidebar">
             <header>
-                <h1>GeoTrends</h1>
-                <p class="subtitle">Temporal Geography</p>
+                <h1>Geographical Archeology</h1>
+                <p class="subtitle">Plus ça change, plus c'est la même chose</p>
             </header>
-            
+
             <div class="control-group">
                 <input type="file" id="csv-upload" accept=".csv" hidden>
                 <button id="upload-btn" class="btn primary">Upload CSV</button>
                 <div class="player-controls">
                     <button id="reset-btn" class="btn icon-btn" title="Reset to Start" disabled>
-                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor"
+                                d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z" />
+                        </svg>
                     </button>
                     <button id="prev-btn" class="btn icon-btn" title="Previous Event" disabled>
-                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+                        </svg>
                     </button>
                     <button id="play-pause-btn" class="btn icon-btn primary" title="Play/Pause" disabled>
-                        <svg class="play-icon" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M8 5v14l11-7z"/></svg>
-                        <svg class="pause-icon" viewBox="0 0 24 24" width="20" height="20" style="display:none;"><path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <svg class="play-icon" viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M8 5v14l11-7z" />
+                        </svg>
+                        <svg class="pause-icon" viewBox="0 0 24 24" width="20" height="20" style="display:none;">
+                            <path fill="currentColor" d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
+                        </svg>
                     </button>
                     <button id="next-btn" class="btn icon-btn" title="Next Event" disabled>
-                        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+                        </svg>
                     </button>
                 </div>
             </div>
-            
+
             <div class="table-container">
                 <table id="data-table">
                     <thead>
@@ -63,25 +77,27 @@
 
         <!-- Main Map Area -->
         <div class="map-wrapper">
-            <main id="map"></main>
-            <div id="map-header">The Rise and Fall of Canaanite Cities</div>
-            <div id="map-footer" style="display: none;"></div>
-        </div>
-
-        <!-- Bottom Time Ruler Strip -->
-        <footer class="time-ruler-strip">
-            <div class="year-display">
-                <span id="current-year-label">Current Year: </span>
-                <span id="current-year-value">-</span>
+            <div class="map-container">
+                <main id="map"></main>
+                <div id="map-header">עלייתן ונפילתן של הערים הכנעניות בשומרון וביזרעאל בתקופת הברזל</div>
+                <div id="map-footer" style="display: none;"></div>
             </div>
-            <div id="time-ruler-container">
-                <div id="time-ruler">
-                    <div id="time-indicator"></div>
-                    <div id="ruler-line"></div>
-                    <div id="ruler-markers"></div>
+            
+            <!-- Bottom Time Ruler Strip -->
+            <footer class="time-ruler-strip">
+                <div class="year-display">
+                    <span id="current-year-label">Current Year: </span>
+                    <span id="current-year-value">-</span>
                 </div>
-            </div>
-        </footer>
+                <div id="time-ruler-container">
+                    <div id="time-ruler">
+                        <div id="time-indicator"></div>
+                        <div id="ruler-line"></div>
+                        <div id="ruler-markers"></div>
+                    </div>
+                </div>
+            </footer>
+        </div>
     </div>
 
     <!-- Leaflet JS -->
@@ -100,4 +116,5 @@
     <!-- Main Application Logic -->
     <script src="app.js"></script>
 </body>
+
 </html>

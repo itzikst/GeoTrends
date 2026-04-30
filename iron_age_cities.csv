@@ -1,16 +1,16 @@
 location name,latitude,longitude,start year,end time,title,description
-Shechem, 32.213, 35.282, -1100 , -1000, s1, s2
-Megido,32.586, 35.184, -1100, -1000, m1, m2
-Megido,32.586, 35.184, -900, -800, m3, m4
-Rehov, 32.456, 35.497, -1100, -800, r1, r2
-Yokneam,32.664, 35.109, -1100, -1000, y1, y2
-Yokneam,32.664, 35.109, -900, -800, y3, y4
-Dotan, 32.412, 35.241, -1100, -1000, d1, d2
-Shilo, 32.056, 35.289, -1100, -1000,sh1,sh2
-Tirsa, 32.287, 35.337, -900, -890, T1, T2
-Shomron, 32.276, 35.190, -860, -800, shomron1, shomron2
+שכם, 32.213, 35.282, -1100 , -1000, s1, s2
+מגידו,32.586, 35.184, -1100, -1000, m1, m2
+מגידו,32.586, 35.184, -900, -800, m3, m4
+תל רחוב, 32.456, 35.497, -1100, -800, r1, r2
+יוקנעם,32.664, 35.109, -1100, -1000, y1, y2
+יוקנעם,32.664, 35.109, -900, -800, y3, y4
+דותן, 32.412, 35.241, -1100, -1000, d1, d2
+שילה, 32.056, 35.289, -1100, -1000,sh1,sh2
+תרצה, 32.287, 35.337, -900, -890, T1, T2
+שומרון, 32.276, 35.190, -870, -800, shomron1, shomron2
 footer,,,-1100,-1000,Shechem Megido and Rehov are the main cities in the area   
 footer,,,-1000,-900,Massive destruction at the beginning of 10th century BC. Note that Rehov is not affected
 footer,,,-900,-890,Wealth accumulation begins at Tirtsa# Yokneam and Megido are rebuilt.
-footer,,,-880,-870,SHortly after that# Tirtsa is destroyed
-footer,,,-860,-800,A new castle at Shomron
+footer,,,-890,-870,SHortly after that# Tirtsa is destroyed
+footer,,,-870,-800,A new castle at Shomron

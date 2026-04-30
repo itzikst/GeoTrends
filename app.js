@@ -75,7 +75,7 @@ const markerGroup = L.layerGroup().addTo(map);
 uploadBtn.addEventListener('click', () => fileInput.click());
 
 // Auto-load decapolis.csv if it exists
-fetch('iron_age_cities.csv')
+fetch('iron_age_cities1.csv')
     .then(response => {
         if (response.ok) return response.text();
         throw new Error('Default CSV not found');
@@ -278,7 +278,7 @@ function animationStep(timestamp) {
     const delta = timestamp - lastTimestamp;
     lastTimestamp = timestamp;
     elapsedTime += delta;
-    
+
     const progress = Math.min(elapsedTime / totalDuration, 1);
 
     // Update current year
@@ -294,15 +294,15 @@ function animationStep(timestamp) {
 
 // Define Custom Icons
 const starIcon = L.icon({
-    iconUrl: 'star.png',
-    iconSize: [32, 32],
+    iconUrl: 'tel.png',
+    iconSize: [48, 48],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16],
 });
 
 const destroyIcon = L.icon({
-    iconUrl: 'destroy.jpg',
-    iconSize: [32, 32],
+    iconUrl: 'destroy.png',
+    iconSize: [48, 48],
     iconAnchor: [16, 16],
     popupAnchor: [0, -16],
 });
@@ -334,7 +334,7 @@ function updateMarkers(year) {
             // This prevents locations with short lifespans (like Tirtsa's 10 years) from starting immediately with a destroy icon.
             const lifespan = activePeriod[1] - activePeriod[0];
             const dynamicThreshold = Math.min(DESTROY_THRESHOLD, lifespan / 2);
-            
+
             const isNearEnd = (activePeriod[1] - year) <= dynamicThreshold;
             const currentIcon = isNearEnd ? destroyIcon : starIcon;
 
@@ -373,7 +373,7 @@ function updateMarkers(year) {
         let formattedText = footerText.replace(/#/g, ',');
         // Add a line break after . or ? if followed by a space
         formattedText = formattedText.replace(/([.?])\s+/g, '$1<br>');
-        
+
         mapFooter.innerHTML = formattedText;
         mapFooter.style.display = 'block';
     } else {

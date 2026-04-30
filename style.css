@@ -40,11 +40,8 @@ h1 {
 
 .app-container {
     display: grid;
-    grid-template-areas: 
-        "sidebar map"
-        "footer footer";
+    grid-template-areas: "sidebar map";
     grid-template-columns: 20% 80%;
-    grid-template-rows: 90vh 10vh;
     height: 100vh;
 }
 
@@ -187,9 +184,16 @@ th {
 /* Map Area */
 .map-wrapper {
     grid-area: map;
-    position: relative;
+    display: flex;
+    flex-direction: column;
     width: 100%;
     height: 100%;
+}
+
+.map-container {
+    flex: 1;
+    position: relative;
+    width: 100%;
 }
 
 .hillshade-layer {
@@ -234,13 +238,14 @@ th {
 
 /* Bottom Footer (Ruler) */
 .time-ruler-strip {
-    grid-area: footer;
     background: #020617;
     border-top: 1px solid var(--border-color);
     padding: 0 2rem;
     display: flex;
     align-items: center;
     gap: 3rem;
+    height: 10vh;
+    width: 100%;
 }
 
 .year-display {
