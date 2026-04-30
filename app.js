@@ -35,7 +35,6 @@ const resetBtn = document.getElementById('reset-btn');
 const prevBtn = document.getElementById('prev-btn');
 const nextBtn = document.getElementById('next-btn');
 const dataTableBody = document.querySelector('#data-table tbody');
-const currentYearValue = document.getElementById('current-year-value');
 const timeIndicator = document.getElementById('time-indicator');
 
 // UI Helpers
@@ -44,10 +43,6 @@ function formatYearLabel(year) {
     if (year > 0) return year; // optionally add AD
     return '0';
 }
-
-const updateYearDisplay = (year) => {
-    currentYearValue.textContent = formatYearLabel(Math.round(year));
-};
 
 const updateIndicator = (year) => {
     const range = maxYear - minYear;
@@ -172,7 +167,6 @@ function processData(rawData) {
 
     currentYear = minYear;
     elapsedTime = 0;
-    updateYearDisplay(currentYear);
     updateIndicator(currentYear);
     drawRulerMarkers(minYear, maxYear);
 
@@ -274,7 +268,6 @@ function syncElapsedTime() {
 }
 
 function syncUI() {
-    updateYearDisplay(currentYear);
     updateIndicator(currentYear);
     updateMarkers(currentYear);
 }
