@@ -364,7 +364,12 @@ function updateMarkers(year) {
     });
 
     if (footerText) {
-        mapFooter.textContent = footerText;
+        // Apply text formatting rules
+        let formattedText = footerText.replace(/#/g, ',');
+        // Add a line break after . or ? if followed by a space
+        formattedText = formattedText.replace(/([.?])\s+/g, '$1<br>');
+        
+        mapFooter.innerHTML = formattedText;
         mapFooter.style.display = 'block';
     } else {
         mapFooter.style.display = 'none';
