@@ -390,3 +390,27 @@ th {
     color: var(--text-main);
     box-shadow: 0 0 8px rgba(255, 255, 255, 0.1);
 }
+
+/* Glowing Pulse Animation for Nearest Smelting Highlight */
+.glowing-highlight-circle {
+    animation: marker-pulse 1.8s infinite ease-in-out;
+    transform-origin: center;
+}
+
+@keyframes marker-pulse {
+    0% {
+        stroke-width: 2px;
+        fill-opacity: 0.12;
+        r: 20px;
+    }
+    50% {
+        stroke-width: 4px;
+        fill-opacity: 0.28;
+        r: 24px;
+    }
+    100% {
+        stroke-width: 2px;
+        fill-opacity: 0.12;
+        r: 20px;
+    }
+}

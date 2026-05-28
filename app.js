@@ -75,6 +75,7 @@ L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/Worl
 
 // Layer Group to store active markers
 const markerGroup = L.layerGroup().addTo(map);
+const highlightLayer = L.layerGroup().addTo(map);
 
 // 2. Handle CSV Upload
 uploadBtn.addEventListener('click', () => fileInput.click());
@@ -564,6 +565,7 @@ function drawPeriodBands(minY, maxY) {
 // 4. Update Map Markers
 function updateMarkers(year) {
     markerGroup.clearLayers();
+    highlightLayer.clearLayers();
     const mapFooter = document.getElementById('map-footer');
     let footerText = '';
 
@@ -603,6 +605,11 @@ function updateMarkers(year) {
             }
 
             const marker = L.marker([loc.latitude, loc.longitude], { icon: currentIcon });
+
+            // Add click listener to highlight nearest smelting site
+            marker.on('click', () => {
+                handleMarkerClick(loc, activePeriod, marker);
+            });
 
             // Add label under the icon on mouse hover
             marker.bindTooltip(loc['location name'], {
@@ -738,4 +745,84 @@ function updateDashboard() {
 
 // Update dashboard when map is panned or zoomed
 map.on('moveend', updateDashboard);
+
+// Click listener on map background to clear active highlights
+map.on('click', () => {
+    highlightLayer.clearLayers();
+});
+
+// 6. Highlight Nearest Smelting Site on Mining Site Click
+function handleMarkerClick(clickedLoc, clickedPeriod, clickedMarker) {
+    highlightLayer.clearLayers();
+
+    const typeVal = (clickedPeriod[2] || clickedLoc.title || clickedLoc.type || '').toLowerCase().trim();
+    const isMining = typeVal.includes('mining') || typeVal.includes('shaft') || typeVal.includes('gallery');
+
+    if (!isMining) return;
+
+    let nearestSmelting = null;
+    let minDistance = Infinity;
+
+    const clickedLatLng = L.latLng(clickedLoc.latitude, clickedLoc.longitude);
+
+    locations.forEach(loc => {
+        if (loc['location name'] === clickedLoc['location name']) return;
+        if (loc['location name'].toLowerCase().trim() === 'footer') return;
+
+        // Check if the site is active during the current year
+        const activePeriod = loc.periods.find(p => currentYear >= p[0] && currentYear <= p[1]);
+        if (activePeriod) {
+            const periodType = (activePeriod[2] || loc.title || loc.type || '').toLowerCase().trim();
+            const isSmelting = periodType.includes('smelting') || periodType.includes('slag') || periodType.includes('furnace');
+
+            if (isSmelting) {
+                const smeltingLatLng = L.latLng(loc.latitude, loc.longitude);
+                const distance = clickedLatLng.distanceTo(smeltingLatLng); // distance in meters
+
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestSmelting = {
+                        loc: loc,
+                        latLng: smeltingLatLng,
+                        activePeriod: activePeriod
+                    };
+                }
+            }
+        }
+    });
+
+    if (nearestSmelting) {
+        const distanceKm = (minDistance / 1000).toFixed(2);
+
+        // 1. Draw an elegant green dashed line connecting the sites
+        const polyline = L.polyline([clickedLatLng, nearestSmelting.latLng], {
+            color: '#10b981', // Sleek green accent color
+            weight: 3,
+            dashArray: '8, 8',
+            opacity: 0.8,
+            className: 'connecting-highlight-line'
+        }).addTo(highlightLayer);
+
+        // 2. Draw a glowing highlight circle around the nearest smelting site
+        const glowCircle = L.circleMarker(nearestSmelting.latLng, {
+            radius: 22,
+            color: '#10b981',
+            fillColor: '#10b981',
+            fillOpacity: 0.15,
+            weight: 2,
+            className: 'glowing-highlight-circle'
+        }).addTo(highlightLayer);
+
+        // 3. Open a sleek popup near the midpoint of the line showing the relationship details
+        polyline.bindPopup(`
+            <div style="font-family: inherit; font-size: 12px; min-width: 160px; text-align: center;">
+                <strong style="color: var(--accent-secondary); font-size: 13px;">Nearest Smelting Site</strong><br>
+                <span style="font-size: 14px; font-weight: 700; display: inline-block; margin: 4px 0;">${nearestSmelting.loc['location name']}</span><br>
+                <div style="border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 4px; margin-top: 4px;">
+                    Distance: <strong>${distanceKm} km</strong>
+                </div>
+            </div>
+        `).openPopup();
+    }
+}
 
