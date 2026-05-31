@@ -594,6 +594,17 @@ legend.onAdd = function (map) {
         }
     });
 
+    // Auto-collapse legend on mobile
+    if (window.innerWidth <= 768) {
+        isMinimized = true;
+        grid.style.display = 'none';
+        iconMin.style.display = 'none';
+        iconMax.style.display = 'block';
+        div.style.maxHeight = '40px';
+        div.style.overflowY = 'hidden';
+        div.style.padding = '8px 12px';
+    }
+
     // Disable Map Clicks/Drags through the Legend control pane
     L.DomEvent.disableClickPropagation(div);
 
@@ -1193,3 +1204,98 @@ function handleMarkerClick(clickedLoc, clickedPeriod, clickedMarker) {
     }
 }
 
+// =====================================================
+// MOBILE SIDEBAR DRAWER TOGGLE LOGIC
+// =====================================================
+(function () {
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebarClose = document.getElementById('sidebar-close');
+    const sidebar = document.querySelector('.sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+
+    if (!menuToggle || !sidebar || !backdrop) return;
+
+    function openDrawer() {
+        sidebar.classList.add('open');
+        backdrop.classList.add('active');
+        menuToggle.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeDrawer() {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('active');
+        menuToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    // Hamburger button opens the drawer
+    menuToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (sidebar.classList.contains('open')) {
+            closeDrawer();
+        } else {
+            openDrawer();
+        }
+    });
+
+    // Close button (inside drawer) closes it
+    if (sidebarClose) {
+        sidebarClose.addEventListener('click', () => closeDrawer());
+    }
+
+    // Tapping the backdrop closes the drawer
+    backdrop.addEventListener('click', () => closeDrawer());
+
+    // Auto-close drawer on mobile after selecting a file or pressing play
+    const isMobile = () => window.innerWidth <= 768;
+
+    // Close after tapping a dropdown file item
+    document.addEventListener('click', (e) => {
+        if (!isMobile()) return;
+        if (e.target.classList.contains('dropdown-item')) {
+            setTimeout(() => closeDrawer(), 200);
+        }
+    });
+
+    // Close drawer after play button is tapped on mobile
+    if (playPauseBtn) {
+        playPauseBtn.addEventListener('click', () => {
+            if (isMobile()) setTimeout(() => closeDrawer(), 300);
+        });
+    }
+})();
+
+// Ensure Leaflet recalculates map size after layout settles on mobile
+// (fixes hit-testing offset when sidebar collapses the grid on first load)
+window.addEventListener('load', () => {
+    setTimeout(() => map.invalidateSize(), 100);
+});
+
+// =====================================================
+// MOBILE MAP NAV BUTTONS (Prev / Next)
+// =====================================================
+(function () {
+    const mobilePrevBtn = document.getElementById('mobile-prev-btn');
+    const mobileNextBtn = document.getElementById('mobile-next-btn');
+
+    if (!mobilePrevBtn || !mobileNextBtn) return;
+
+    // Delegate clicks to the existing sidebar prev/next buttons
+    mobilePrevBtn.addEventListener('click', () => { prevBtn.click(); mobilePrevBtn.blur(); });
+    mobileNextBtn.addEventListener('click', () => { nextBtn.click(); mobileNextBtn.blur(); });
+
+    // Force blur on touch release to prevent stuck styles on iOS/mobile browsers
+    mobilePrevBtn.addEventListener('touchend', () => { setTimeout(() => mobilePrevBtn.blur(), 50); });
+    mobileNextBtn.addEventListener('touchend', () => { setTimeout(() => mobileNextBtn.blur(), 50); });
+
+    // Keep disabled state in sync with the sidebar buttons
+    function syncDisabled() {
+        mobilePrevBtn.disabled = prevBtn.disabled;
+        mobileNextBtn.disabled = nextBtn.disabled;
+    }
+
+    const observer = new MutationObserver(syncDisabled);
+    observer.observe(prevBtn, { attributes: true, attributeFilter: ['disabled'] });
+    observer.observe(nextBtn, { attributes: true, attributeFilter: ['disabled'] });
+
+    syncDisabled(); // Apply initial state
+})();

@@ -46,6 +46,46 @@ h1 {
     height: 100vh;
 }
 
+/* Mobile Hamburger Button (hidden on desktop) */
+.menu-toggle-btn {
+    display: none;
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 2001;
+    background: rgba(15, 23, 42, 0.9);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 0.65rem;
+    border-radius: 8px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.menu-toggle-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+}
+
+/* Mobile drawer overlay backdrop */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-backdrop.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 /* Sidebar */
 .sidebar {
     grid-area: sidebar;
@@ -60,6 +100,9 @@ h1 {
     height: 100vh;
     max-height: 100vh;
     overflow: hidden;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+        visibility 0s linear 0.3s;
+    /* delay visibility change until after slide-out */
 }
 
 .control-group {
@@ -186,6 +229,15 @@ th {
     position: sticky;
     top: 0;
     z-index: 2;
+}
+
+/* Mobile floating prev/next nav (hidden on desktop, shown on mobile) */
+.mobile-map-nav {
+    display: none;
+    position: absolute;
+    bottom: 16px;
+    left: 15px;
+    z-index: 1000;
 }
 
 /* Map Area */
@@ -571,14 +623,234 @@ th {
         padding: 8px 12px !important;
         font-size: 11px !important;
     }
+
     .legend h4 {
         font-size: 12px !important;
     }
+
     .legend-grid {
         gap: 4px 8px !important;
     }
+
     .legend img {
         width: 16px !important;
         height: 16px !important;
+    }
+}
+
+/* =====================================================
+   MOBILE RESPONSIVE LAYOUT (≤ 768px)
+   ===================================================== */
+@media (max-width: 768px) {
+    body {
+        overflow: hidden;
+    }
+
+    /* Show the hamburger toggle button */
+    .menu-toggle-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Collapse grid to single full-screen column (map fills everything) */
+    .app-container {
+        grid-template-areas: "map";
+        grid-template-columns: 1fr;
+        position: relative;
+    }
+
+    /* Show the backdrop — pointer-events only enabled when .active */
+    .sidebar-backdrop {
+        display: block;
+        pointer-events: none;
+    }
+
+    .sidebar-backdrop.active {
+        pointer-events: auto;
+    }
+
+    /* Sidebar becomes an off-screen sliding drawer */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: -340px;
+        width: 320px;
+        height: 100dvh;
+        max-height: 100dvh;
+        background: rgba(10, 16, 35, 0.97);
+        backdrop-filter: blur(20px);
+        z-index: 2000;
+        box-shadow: 5px 0 30px rgba(0, 0, 0, 0.6);
+        padding-top: 4.5rem;
+        /* Clear the close button */
+        pointer-events: none;
+        /* Don't intercept touches when off-screen */
+        visibility: hidden;
+        /* Also prevents focus traps and accessibility reads */
+    }
+
+    /* Sidebar slides in when .open class is added */
+    .sidebar.open {
+        left: 0;
+        pointer-events: auto;
+        visibility: visible;
+        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+            visibility 0s linear 0s;
+        /* show immediately when opening */
+    }
+
+    /* Map wrapper takes full screen */
+    .map-wrapper {
+        grid-area: map;
+        width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+    }
+
+    /* Scale down map header and reposition so it doesn't overlap the hamburger */
+    #map-header {
+        font-size: 0.85rem;
+        padding: 0.4rem 0.75rem;
+        top: 15px;
+        left: 70px;
+        /* Clear the hamburger button */
+        right: 10px;
+        transform: none;
+        max-width: calc(100% - 80px);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    #map-footer {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.75rem;
+        max-width: 90%;
+        bottom: 100px;
+        /* Clear the time ruler */
+    }
+
+    /* Stack the bottom timeline strip vertically */
+    .time-ruler-strip {
+        flex-direction: column;
+        height: auto;
+        padding: 0.6rem 0.75rem;
+        gap: 0.35rem;
+    }
+
+    .year-display {
+        min-width: unset;
+        text-align: center;
+        font-size: 1rem;
+    }
+
+    #time-ruler-container {
+        height: 44px;
+        width: 100%;
+        padding-top: 3px;
+    }
+
+    /* Hide period band text labels — keep colored bands for visual cues */
+    .ruler-period-band span {
+        display: none;
+    }
+
+    /* Minimize the Leaflet legend and dashboard overlays by default */
+    .leaflet-bottom.leaflet-right {
+        max-width: 60vw;
+    }
+
+    .leaflet-top.leaflet-right {
+        max-width: 55vw;
+    }
+
+    /* Shrink legend and dashboard widths on mobile */
+    .info.legend,
+    .info.dashboard-pane {
+        font-size: 11px !important;
+        width: auto !important;
+        max-width: 180px !important;
+        padding: 8px 10px !important;
+    }
+
+    .info.legend .legend-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 4px 6px !important;
+    }
+
+    .info.legend .legend-grid img {
+        width: 16px !important;
+        height: 16px !important;
+    }
+
+    /* Drawer close button inside sidebar */
+    .sidebar-close-btn {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        background: transparent;
+        border: none;
+        color: var(--text-dim);
+        cursor: pointer;
+        padding: 0.4rem;
+        border-radius: 6px;
+        transition: color 0.2s, background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sidebar-close-btn:hover {
+        color: var(--text-main);
+        background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Mobile floating prev/next nav buttons on the map */
+    .mobile-map-nav {
+        display: flex;
+        gap: 0.4rem;
+    }
+
+    .mobile-map-nav-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.7rem;
+        background: rgba(15, 23, 42, 0.88);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        color: var(--text-main);
+        cursor: pointer;
+        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        transition: background 0.2s, box-shadow 0.2s;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .mobile-map-nav-btn:active:not(:disabled) {
+        background: rgba(59, 130, 246, 0.6);
+        box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+    }
+
+    @media (hover: hover) {
+        .mobile-map-nav-btn:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.45);
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+        }
+    }
+
+    .mobile-map-nav-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+    }
+
+    .mobile-map-nav-btn:focus {
+        outline: none;
+        background: rgba(15, 23, 42, 0.88);
+    }
+
+    .leaflet-control-attribution {
+        display: none !important;
     }
 }
