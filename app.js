@@ -82,7 +82,7 @@ uploadBtn.addEventListener('click', () => fileInput.click());
 
 // Auto-load a default CSV if it exists
 function loadDefaultCSV() {
-    const defaultFiles = ['Timna1.csv', 'Timna_Converted.csv', 'iron_age_cities.csv', 'decapolis.csv'];
+    const defaultFiles = ['data/timna_valley.csv', 'Timna_Converted.csv', 'data/iron_age_cities.csv', 'decapolis.csv'];
 
     let tryLoad = (index) => {
         if (index >= defaultFiles.length) {
@@ -114,6 +114,81 @@ function loadDefaultCSV() {
     tryLoad(0);
 }
 loadDefaultCSV();
+
+// 2b. Open Server File Dropdown Logic
+const openBtn = document.getElementById('open-btn');
+const openDropdown = document.getElementById('open-dropdown');
+
+if (openBtn && openDropdown) {
+    openBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = openDropdown.style.display === 'flex' || openDropdown.style.display === 'block';
+        
+        if (isVisible) {
+            openDropdown.style.display = 'none';
+        } else {
+            openDropdown.style.display = 'flex';
+            openDropdown.innerHTML = '<div class="dropdown-item" style="color: #475569; cursor: default;">Loading server files...</div>';
+            
+            fetch('data/files.json')
+                .then(res => {
+                    if (!res.ok) throw new Error('Failed to load server files');
+                    return res.json();
+                })
+                .then(files => {
+                    openDropdown.innerHTML = '';
+                    if (files.length === 0) {
+                        openDropdown.innerHTML = '<div class="dropdown-item" style="color: #475569; cursor: default;">No CSV files found</div>';
+                        return;
+                    }
+                    
+                    files.forEach(fileName => {
+                        const item = document.createElement('div');
+                        item.className = 'dropdown-item';
+                        item.textContent = fileName;
+                        item.title = `Click to load data/${fileName}`;
+                        
+                        item.addEventListener('click', (ev) => {
+                            ev.stopPropagation();
+                            openDropdown.style.display = 'none';
+                            
+                            // Load the selected CSV from the server's data directory
+                            const filePath = `data/${fileName}`;
+                            fetch(filePath)
+                                .then(response => {
+                                    if (!response.ok) throw new Error(`Could not load ${fileName}`);
+                                    return response.text();
+                                })
+                                .then(csvText => {
+                                    console.log(`Successfully loaded selected server CSV: ${filePath}`);
+                                    Papa.parse(csvText, {
+                                        header: true,
+                                        dynamicTyping: true,
+                                        skipEmptyLines: true,
+                                        complete: (results) => {
+                                            processData(results.data);
+                                        }
+                                    });
+                                })
+                                .catch(err => {
+                                    alert(`Error loading file: ${err.message}`);
+                                });
+                        });
+                        
+                        openDropdown.appendChild(item);
+                    });
+                })
+                .catch(err => {
+                    openDropdown.innerHTML = `<div class="dropdown-item" style="color: #ef4444; cursor: default;">Error: ${err.message}</div>`;
+                });
+        }
+    });
+
+    // Close open dropdown when clicking outside
+    document.addEventListener('click', () => {
+        openDropdown.style.display = 'none';
+    });
+}
 
 fileInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
@@ -431,11 +506,11 @@ const legend = L.control({ position: 'bottomright' });
 
 legend.onAdd = function (map) {
     const div = L.DomUtil.create('div', 'info legend');
-    div.style.background = 'rgba(15, 23, 42, 0.85)';
-    div.style.color = 'var(--text-main)';
+    div.style.background = 'rgba(255, 255, 255, 0.35)'; // Frosted glass light background
+    div.style.color = '#020617'; // Dark slate text for legibility
     div.style.padding = '12px 16px';
     div.style.borderRadius = '8px';
-    div.style.border = '1px solid var(--border-color)';
+    div.style.border = '1px solid rgba(0, 0, 0, 0.15)';
     div.style.backdropFilter = 'blur(8px)';
     div.style.fontSize = '12px';
     div.style.fontFamily = 'Inter, sans-serif';
@@ -443,11 +518,7 @@ legend.onAdd = function (map) {
     div.style.overflowY = 'auto';
     div.style.pointerEvents = 'auto'; // allow scrolling legend
     div.style.width = '320px'; // Fixed width to neatly accommodate 2 columns
-
-    let legendHtml = `
-        <h4 style="margin: 0 0 8px 0; font-family: 'Outfit', sans-serif; font-size: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Legend</h4>
-        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 12px;">
-    `;
+    div.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'; // Beautiful smooth layout transitions!
 
     const labels = {
         'mining': 'Mining',
@@ -464,6 +535,21 @@ legend.onAdd = function (map) {
         'Unknown': 'Unknown / Other'
     };
 
+    let legendHtml = `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0, 0, 0, 0.15); padding-bottom: 5px; margin-bottom: 8px;">
+            <h4 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 14px;">Legend</h4>
+            <button class="legend-toggle-btn" style="background: transparent; border: none; cursor: pointer; color: inherit; display: flex; align-items: center; padding: 2px;" title="Minimize/Maximize">
+                <svg class="toggle-icon-min" viewBox="0 0 24 24" width="16" height="16">
+                    <path fill="currentColor" d="M19 13H5v-2h14v2z"/>
+                </svg>
+                <svg class="toggle-icon-max" viewBox="0 0 24 24" width="16" height="16" style="display: none;">
+                    <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                </svg>
+            </button>
+        </div>
+        <div class="legend-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 12px;">
+    `;
+
     for (let key in labels) {
         legendHtml += `
             <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden;" title="${labels[key]}">
@@ -475,6 +561,39 @@ legend.onAdd = function (map) {
 
     legendHtml += `</div>`;
     div.innerHTML = legendHtml;
+
+    // Attach Toggle logic for Minimize / Maximize
+    const toggleBtn = div.querySelector('.legend-toggle-btn');
+    const grid = div.querySelector('.legend-grid');
+    const iconMin = div.querySelector('.toggle-icon-min');
+    const iconMax = div.querySelector('.toggle-icon-max');
+
+    let isMinimized = false;
+    toggleBtn.addEventListener('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        isMinimized = !isMinimized;
+        if (isMinimized) {
+            grid.style.display = 'none';
+            iconMin.style.display = 'none';
+            iconMax.style.display = 'block';
+            div.style.width = '120px';
+            div.style.maxHeight = '40px';
+            div.style.overflowY = 'hidden';
+            div.style.padding = '8px 12px';
+        } else {
+            grid.style.display = 'grid';
+            iconMin.style.display = 'block';
+            iconMax.style.display = 'none';
+            div.style.width = '320px';
+            div.style.maxHeight = '320px';
+            div.style.overflowY = 'auto';
+            div.style.padding = '12px 16px';
+        }
+    });
+
+    // Disable Map Clicks/Drags through the Legend control pane
+    L.DomEvent.disableClickPropagation(div);
+
     return div;
 };
 
@@ -668,11 +787,11 @@ const dashboard = L.control({ position: 'topright' });
 
 dashboard.onAdd = function (map) {
     const div = L.DomUtil.create('div', 'info dashboard-pane');
-    div.style.background = 'rgba(15, 23, 42, 0.85)';
-    div.style.color = 'var(--text-main)';
+    div.style.background = 'rgba(255, 255, 255, 0.35)'; // Frosted glass light background
+    div.style.color = '#020617'; // Dark slate text for legibility
     div.style.padding = '12px 16px';
     div.style.borderRadius = '8px';
-    div.style.border = '1px solid var(--border-color)';
+    div.style.border = '1px solid rgba(0, 0, 0, 0.15)';
     div.style.backdropFilter = 'blur(8px)';
     div.style.fontSize = '13px';
     div.style.fontFamily = 'Inter, sans-serif';
@@ -680,27 +799,31 @@ dashboard.onAdd = function (map) {
     div.style.pointerEvents = 'auto';
 
     div.innerHTML = `
-        <h4 style="margin: 0 0 10px 0; font-family: 'Outfit', sans-serif; font-size: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Active Features Dashboard</h4>
+        <h4 style="margin: 0 0 10px 0; font-family: 'Outfit', sans-serif; font-size: 15px; border-bottom: 1px solid rgba(0, 0, 0, 0.15); padding-bottom: 5px;">Active Features Dashboard</h4>
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <img src="icons/mining.png" style="width: 18px; height: 18px;" />
                     <span>Mining Features:</span>
                 </div>
-                <strong id="dash-mining-count" style="color: var(--accent-primary); font-size: 16px;">0</strong>
+                <strong id="dash-mining-count" style="color: #2563eb; font-size: 16px;">0</strong>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <img src="icons/smelting.png" style="width: 18px; height: 18px;" />
                     <span>Smelting Features:</span>
                 </div>
-                <strong id="dash-smelting-count" style="color: var(--accent-secondary); font-size: 16px;">0</strong>
+                <strong id="dash-smelting-count" style="color: #059669; font-size: 16px;">0</strong>
             </div>
-            <div style="margin-top: 6px; font-size: 11px; color: var(--text-dim); text-align: center; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 6px;">
+            <div style="margin-top: 6px; font-size: 11px; color: #475569; text-align: center; border-top: 1px dashed rgba(0, 0, 0, 0.15); padding-top: 6px;">
                 Currently in Viewport
             </div>
         </div>
     `;
+
+    // Disable Map Clicks/Drags through the Dashboard control pane
+    L.DomEvent.disableClickPropagation(div);
+
     return div;
 };
 
@@ -751,78 +874,178 @@ map.on('click', () => {
     highlightLayer.clearLayers();
 });
 
-// 6. Highlight Nearest Smelting Site on Mining Site Click
+// 6. Highlight Nearest Smelting Site on Mining Site Click / Catchment Mining Sites on Smelting Site Click
 function handleMarkerClick(clickedLoc, clickedPeriod, clickedMarker) {
     highlightLayer.clearLayers();
 
     const typeVal = (clickedPeriod[2] || clickedLoc.title || clickedLoc.type || '').toLowerCase().trim();
     const isMining = typeVal.includes('mining') || typeVal.includes('shaft') || typeVal.includes('gallery');
-
-    if (!isMining) return;
-
-    let nearestSmelting = null;
-    let minDistance = Infinity;
+    const isSmelting = typeVal.includes('smelting') || typeVal.includes('slag') || typeVal.includes('furnace');
 
     const clickedLatLng = L.latLng(clickedLoc.latitude, clickedLoc.longitude);
 
-    locations.forEach(loc => {
-        if (loc['location name'] === clickedLoc['location name']) return;
-        if (loc['location name'].toLowerCase().trim() === 'footer') return;
+    if (isMining) {
+        let nearestSmelting = null;
+        let minDistance = Infinity;
 
-        // Check if the site is active during the current year
-        const activePeriod = loc.periods.find(p => currentYear >= p[0] && currentYear <= p[1]);
-        if (activePeriod) {
-            const periodType = (activePeriod[2] || loc.title || loc.type || '').toLowerCase().trim();
-            const isSmelting = periodType.includes('smelting') || periodType.includes('slag') || periodType.includes('furnace');
+        locations.forEach(loc => {
+            if (loc['location name'] === clickedLoc['location name']) return;
+            if (loc['location name'].toLowerCase().trim() === 'footer') return;
 
-            if (isSmelting) {
-                const smeltingLatLng = L.latLng(loc.latitude, loc.longitude);
-                const distance = clickedLatLng.distanceTo(smeltingLatLng); // distance in meters
+            // Check if the site is active during the current year
+            const activePeriod = loc.periods.find(p => currentYear >= p[0] && currentYear <= p[1]);
+            if (activePeriod) {
+                const periodType = (activePeriod[2] || loc.title || loc.type || '').toLowerCase().trim();
+                const isSm = periodType.includes('smelting') || periodType.includes('slag') || periodType.includes('furnace');
 
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestSmelting = {
-                        loc: loc,
-                        latLng: smeltingLatLng,
-                        activePeriod: activePeriod
-                    };
+                if (isSm) {
+                    const smeltingLatLng = L.latLng(loc.latitude, loc.longitude);
+                    const distance = clickedLatLng.distanceTo(smeltingLatLng); // distance in meters
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestSmelting = {
+                            loc: loc,
+                            latLng: smeltingLatLng,
+                            activePeriod: activePeriod
+                        };
+                    }
                 }
             }
-        }
-    });
+        });
 
-    if (nearestSmelting) {
-        const distanceKm = (minDistance / 1000).toFixed(2);
+        if (nearestSmelting) {
+            const distanceKm = (minDistance / 1000).toFixed(2);
 
-        // 1. Draw an elegant green dashed line connecting the sites
-        const polyline = L.polyline([clickedLatLng, nearestSmelting.latLng], {
-            color: '#10b981', // Sleek green accent color
-            weight: 3,
-            dashArray: '8, 8',
-            opacity: 0.8,
-            className: 'connecting-highlight-line'
-        }).addTo(highlightLayer);
+            // 1. Draw an elegant green dashed line connecting the sites
+            const polyline = L.polyline([clickedLatLng, nearestSmelting.latLng], {
+                color: '#10b981', // Sleek green accent color
+                weight: 3,
+                dashArray: '8, 8',
+                opacity: 0.8,
+                className: 'connecting-highlight-line'
+            }).addTo(highlightLayer);
 
-        // 2. Draw a glowing highlight circle around the nearest smelting site
-        const glowCircle = L.circleMarker(nearestSmelting.latLng, {
-            radius: 22,
-            color: '#10b981',
-            fillColor: '#10b981',
-            fillOpacity: 0.15,
-            weight: 2,
-            className: 'glowing-highlight-circle'
-        }).addTo(highlightLayer);
+            // 2. Draw a glowing highlight circle around the nearest smelting site
+            L.circleMarker(nearestSmelting.latLng, {
+                radius: 22,
+                color: '#10b981',
+                fillColor: '#10b981',
+                fillOpacity: 0.15,
+                weight: 2,
+                className: 'glowing-highlight-circle'
+            }).addTo(highlightLayer);
 
-        // 3. Open a sleek popup near the midpoint of the line showing the relationship details
-        polyline.bindPopup(`
-            <div style="font-family: inherit; font-size: 12px; min-width: 160px; text-align: center;">
-                <strong style="color: var(--accent-secondary); font-size: 13px;">Nearest Smelting Site</strong><br>
-                <span style="font-size: 14px; font-weight: 700; display: inline-block; margin: 4px 0;">${nearestSmelting.loc['location name']}</span><br>
-                <div style="border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 4px; margin-top: 4px;">
-                    Distance: <strong>${distanceKm} km</strong>
+            // 3. Open a sleek popup near the midpoint of the line showing the relationship details
+            polyline.bindPopup(`
+                <div style="font-family: inherit; font-size: 12px; min-width: 160px; text-align: center;">
+                    <strong style="color: var(--accent-secondary); font-size: 13px;">Nearest Smelting Site</strong><br>
+                    <span style="font-size: 14px; font-weight: 700; display: inline-block; margin: 4px 0;">${nearestSmelting.loc['location name']}</span><br>
+                    <div style="border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 4px; margin-top: 4px;">
+                        Distance: <strong>${distanceKm} km</strong>
+                    </div>
                 </div>
-            </div>
-        `).openPopup();
+            `).openPopup();
+        }
+    } else if (isSmelting) {
+        const matchingMiningSites = [];
+
+        // 1. Gather all currently active smelting sites on the map
+        const activeSmeltingSites = [];
+        locations.forEach(loc => {
+            if (loc['location name'].toLowerCase().trim() === 'footer') return;
+            const activePeriod = loc.periods.find(p => currentYear >= p[0] && currentYear <= p[1]);
+            if (activePeriod) {
+                const periodType = (activePeriod[2] || loc.title || loc.type || '').toLowerCase().trim();
+                const isSm = periodType.includes('smelting') || periodType.includes('slag') || periodType.includes('furnace');
+                if (isSm) {
+                    activeSmeltingSites.push({
+                        loc: loc,
+                        latLng: L.latLng(loc.latitude, loc.longitude)
+                    });
+                }
+            }
+        });
+
+        // 2. Find all active mining sites for which this clicked smelting site is their closest neighbor
+        locations.forEach(loc => {
+            if (loc['location name'] === clickedLoc['location name']) return;
+            if (loc['location name'].toLowerCase().trim() === 'footer') return;
+
+            const activePeriod = loc.periods.find(p => currentYear >= p[0] && currentYear <= p[1]);
+            if (activePeriod) {
+                const periodType = (activePeriod[2] || loc.title || loc.type || '').toLowerCase().trim();
+                const isMin = periodType.includes('mining') || periodType.includes('shaft') || periodType.includes('gallery');
+
+                if (isMin) {
+                    const miningLatLng = L.latLng(loc.latitude, loc.longitude);
+                    let closestSmelting = null;
+                    let minDistance = Infinity;
+
+                    activeSmeltingSites.forEach(sm => {
+                        const dist = miningLatLng.distanceTo(sm.latLng);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            closestSmelting = sm;
+                        }
+                    });
+
+                    // Match if the closest smelting site is this clicked one
+                    if (closestSmelting && closestSmelting.loc['location name'] === clickedLoc['location name']) {
+                        matchingMiningSites.push({
+                            loc: loc,
+                            latLng: miningLatLng,
+                            distance: minDistance
+                        });
+                    }
+                }
+            }
+        });
+
+        // 3. Highlight connected mining sites with elegant blue lines and halos
+        if (matchingMiningSites.length > 0) {
+            matchingMiningSites.forEach(ms => {
+                // Connecting blue dashed line
+                L.polyline([clickedLatLng, ms.latLng], {
+                    color: '#3b82f6', // Sleek blue supply line
+                    weight: 2.5,
+                    dashArray: '6, 6',
+                    opacity: 0.75,
+                    className: 'connecting-highlight-line'
+                }).addTo(highlightLayer);
+
+                // Glowing blue pulse halo around matching mining site
+                L.circleMarker(ms.latLng, {
+                    radius: 18,
+                    color: '#3b82f6',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.12,
+                    weight: 2,
+                    className: 'glowing-highlight-circle-blue'
+                }).addTo(highlightLayer);
+            });
+
+            // Summary popup at clicked smelting site
+            clickedMarker.bindPopup(`
+                <div style="font-family: inherit; font-size: 12px; min-width: 180px; text-align: center;">
+                    <strong style="color: var(--accent-primary); font-size: 13px;">Smelting Center Hub</strong><br>
+                    <span style="font-size: 14px; font-weight: 700; display: inline-block; margin: 4px 0;">${clickedLoc['location name']}</span><br>
+                    <div style="border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 6px; margin-top: 4px;">
+                        Serving: <strong>${matchingMiningSites.length} active mining site${matchingMiningSites.length > 1 ? 's' : ''}</strong>
+                    </div>
+                </div>
+            `).openPopup();
+        } else {
+            clickedMarker.bindPopup(`
+                <div style="font-family: inherit; font-size: 12px; min-width: 180px; text-align: center;">
+                    <strong style="color: var(--accent-primary); font-size: 13px;">Smelting Center Hub</strong><br>
+                    <span style="font-size: 14px; font-weight: 700; display: inline-block; margin: 4px 0;">${clickedLoc['location name']}</span><br>
+                    <div style="border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 6px; margin-top: 4px; color: var(--text-dim);">
+                        No active mining sites are closest to this smelting center.
+                    </div>
+                </div>
+            `).openPopup();
+        }
     }
 }
 

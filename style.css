@@ -414,3 +414,65 @@ th {
         r: 20px;
     }
 }
+
+/* Glowing Pulse Animation for Nearest Smelting Highlight (Blue) */
+.glowing-highlight-circle-blue {
+    animation: marker-pulse-blue 1.8s infinite ease-in-out;
+    transform-origin: center;
+}
+
+@keyframes marker-pulse-blue {
+    0% {
+        stroke-width: 2px;
+        fill-opacity: 0.12;
+        r: 16px;
+    }
+    50% {
+        stroke-width: 4px;
+        fill-opacity: 0.28;
+        r: 20px;
+    }
+    100% {
+        stroke-width: 2px;
+        fill-opacity: 0.12;
+        r: 16px;
+    }
+}
+
+/* Frosted Glass Dropdown for Server File Selector */
+.frosted-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 0;
+    margin-top: 2px;
+}
+
+.dropdown-item {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: #020617;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dropdown-item:hover {
+    background: rgba(59, 130, 246, 0.1);
+    color: #2563eb;
+}

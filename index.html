@@ -25,10 +25,16 @@
         <aside class="sidebar">
             <header>
                 <h1>Geographical Archeology</h1>
-                <p class="subtitle">Plus ça change, plus c'est la même chose</p>
+                <p class="subtitle">Survey. Dig, Query. Visualize. Discover.</p>
             </header>
 
             <div class="control-group">
+                <div class="open-file-container" style="position: relative; width: 100%;">
+                    <button id="open-btn" class="btn secondary" style="width: 100%; margin-bottom: 0.5rem;">Open Server File</button>
+                    <div id="open-dropdown" class="frosted-dropdown" style="display: none;">
+                        <!-- Server CSV files will be dynamically loaded here -->
+                    </div>
+                </div>
                 <input type="file" id="csv-upload" accept=".csv" hidden>
                 <button id="upload-btn" class="btn primary">Upload CSV</button>
                 <div class="player-controls">
