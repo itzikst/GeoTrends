@@ -631,21 +631,21 @@ function drawRulerMarkers(minY, maxY) {
 }
 
 const HISTORICAL_PERIODS = [
-    { name: 'Neolithic', start: -10000, end: -5800, color: 'rgba(59, 130, 246, 0.15)' },
-    { name: 'Chalcolithic', start: -5800, end: -3600, color: 'rgba(16, 185, 129, 0.15)' },
-    { name: 'EB', start: -3600, end: -2000, color: 'rgba(245, 158, 11, 0.15)' },
-    { name: 'MB', start: -2000, end: -1500, color: 'rgba(239, 68, 68, 0.15)' },
-    { name: 'LB', start: -1500, end: -1200, color: 'rgba(139, 92, 246, 0.15)' },
-    { name: 'EI', start: -1200, end: -1000, color: 'rgba(236, 72, 153, 0.15)' },
-    { name: 'LI', start: -1000, end: -586, color: 'rgba(20, 184, 166, 0.15)' },
-    { name: 'Per', start: -586, end: -37, color: 'rgba(79, 70, 229, 0.15)' },
-    { name: 'Rom', start: -37, end: 324, color: 'rgba(217, 70, 239, 0.15)' },
-    { name: 'Byz', start: 324, end: 638, color: 'rgba(14, 165, 233, 0.15)' },
-    { name: 'EM', start: 638, end: 1099, color: 'rgba(132, 204, 22, 0.15)' },
-    { name: 'Cru', start: 1099, end: 1291, color: 'rgba(244, 63, 94, 0.15)' },
-    { name: 'Mam', start: 1291, end: 1517, color: 'rgba(249, 115, 22, 0.15)' },
-    { name: 'Ott', start: 1517, end: 1917, color: 'rgba(100, 116, 139, 0.15)' },
-    { name: 'Mod', start: 1917, end: 2026, color: 'rgba(16, 185, 129, 0.2)' }
+    { name: 'Neolithic', start: -10000, end: -5800, color: 'rgba(59, 130, 246, 0.35)' },
+    { name: 'Chalcolithic', start: -5800, end: -3600, color: 'rgba(16, 185, 129, 0.35)' },
+    { name: 'EB', start: -3600, end: -2000, color: 'rgba(245, 158, 11, 0.35)' },
+    { name: 'MB', start: -2000, end: -1500, color: 'rgba(239, 68, 68, 0.35)' },
+    { name: 'LB', start: -1500, end: -1200, color: 'rgba(139, 92, 246, 0.35)' },
+    { name: 'EI', start: -1200, end: -1000, color: 'rgba(236, 72, 153, 0.35)' },
+    { name: 'LI', start: -1000, end: -586, color: 'rgba(20, 184, 166, 0.35)' },
+    { name: 'Per', start: -586, end: -37, color: 'rgba(79, 70, 229, 0.35)' },
+    { name: 'Rom', start: -37, end: 324, color: 'rgba(217, 70, 239, 0.35)' },
+    { name: 'Byz', start: 324, end: 638, color: 'rgba(14, 165, 233, 0.35)' },
+    { name: 'EM', start: 638, end: 1099, color: 'rgba(132, 204, 22, 0.35)' },
+    { name: 'Cru', start: 1099, end: 1291, color: 'rgba(244, 63, 94, 0.35)' },
+    { name: 'Mam', start: 1291, end: 1517, color: 'rgba(249, 115, 22, 0.35)' },
+    { name: 'Ott', start: 1517, end: 1917, color: 'rgba(100, 116, 139, 0.35)' },
+    { name: 'Mod', start: 1917, end: 2026, color: 'rgba(16, 185, 129, 0.4)' }
 ];
 
 function drawPeriodBands(minY, maxY) {

@@ -42,7 +42,7 @@ h1 {
 .app-container {
     display: grid;
     grid-template-areas: "sidebar map";
-    grid-template-columns: 20% 80%;
+    grid-template-columns: 360px 1fr;
     height: 100vh;
 }
 
@@ -52,10 +52,10 @@ h1 {
     background: var(--panel-bg);
     backdrop-filter: blur(12px);
     border-right: 1px solid var(--border-color);
-    padding: 2rem;
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1.5rem;
     z-index: 10;
     height: 100vh;
     max-height: 100vh;
@@ -181,10 +181,11 @@ td {
 }
 
 th {
-    background: rgba(255, 255, 255, 0.05);
+    background: #151e33;
     color: var(--text-dim);
     position: sticky;
     top: 0;
+    z-index: 2;
 }
 
 /* Map Area */
@@ -193,11 +194,14 @@ th {
     display: flex;
     flex-direction: column;
     width: 100%;
-    height: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
 }
 
 .map-container {
     flex: 1;
+    min-height: 0;
     position: relative;
     width: 100%;
 }
@@ -269,9 +273,10 @@ th {
     padding: 0 2rem;
     display: flex;
     align-items: center;
-    gap: 3rem;
-    height: 10vh;
+    gap: 2rem;
+    height: 90px;
     width: 100%;
+    flex-shrink: 0;
 }
 
 .year-display {
@@ -287,10 +292,11 @@ th {
 
 #time-ruler-container {
     flex: 1;
-    height: 40px;
+    height: 60px;
     position: relative;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
+    padding-top: 5px;
 }
 
 #time-ruler {
@@ -555,4 +561,24 @@ th {
 
 .custom-leaflet-popup .leaflet-popup-close-button:hover {
     color: #0f172a !important;
+}
+
+/* Responsive Legend on smaller laptop screen resolutions */
+@media (max-height: 800px) or (max-width: 1366px) {
+    .legend {
+        max-width: 260px !important;
+        max-height: 220px !important;
+        padding: 8px 12px !important;
+        font-size: 11px !important;
+    }
+    .legend h4 {
+        font-size: 12px !important;
+    }
+    .legend-grid {
+        gap: 4px 8px !important;
+    }
+    .legend img {
+        width: 16px !important;
+        height: 16px !important;
+    }
 }
