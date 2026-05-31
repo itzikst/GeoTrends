@@ -434,7 +434,7 @@ const destroyIcon = L.icon({
 // Map each type to an icon stored in the icons folder
 const typeIcons = {};
 const iconNames = [
-    'Unknown', 'burial', 'ceramics', 'cultic', 'hunting',
+    'unknown', 'burial', 'ceramics', 'cultic', 'hunting',
     'mining', 'open_mining', 'petroglyph', 'quarrying',
     'smelting', 'stone', 'workshop'
 ];
@@ -449,7 +449,7 @@ iconNames.forEach(name => {
 });
 
 function getIconForType(type) {
-    if (!type) return typeIcons['Unknown'];
+    if (!type) return typeIcons['unknown'];
     const t = type.toLowerCase().trim();
 
     if (t.includes('burial') || t.includes('tumulus') || t.includes('cairn')) {
@@ -498,7 +498,7 @@ function getIconForType(type) {
         }
     }
 
-    return typeIcons['Unknown'];
+    return typeIcons['unknown'];
 }
 
 // Add a beautiful Map Legend
@@ -532,7 +532,7 @@ legend.onAdd = function (map) {
         'ceramics': 'Ceramics / Pottery',
         'quarrying': 'Quarrying',
         'hunting': 'Hunting / Trap',
-        'Unknown': 'Unknown / Other'
+        'unknown': 'Unknown / Other'
     };
 
     let legendHtml = `
