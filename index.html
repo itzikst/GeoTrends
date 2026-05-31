@@ -30,13 +30,13 @@
 
             <div class="control-group">
                 <div class="open-file-container" style="position: relative; width: 100%;">
-                    <button id="open-btn" class="btn secondary" style="width: 100%; margin-bottom: 0.5rem;">Open Server File</button>
+                    <button id="open-btn" class="btn secondary" style="width: 100%; margin-bottom: 0.5rem;">Open Project</button>
                     <div id="open-dropdown" class="frosted-dropdown" style="display: none;">
                         <!-- Server CSV files will be dynamically loaded here -->
                     </div>
                 </div>
                 <input type="file" id="csv-upload" accept=".csv" hidden>
-                <button id="upload-btn" class="btn primary">Upload CSV</button>
+                <button id="upload-btn" class="btn primary">Open Local File</button>
                 <div class="player-controls">
                     <button id="reset-btn" class="btn icon-btn" title="Reset to Start" disabled>
                         <svg viewBox="0 0 24 24" width="20" height="20">
@@ -69,6 +69,7 @@
                 <table id="data-table">
                     <thead>
                         <tr>
+                            <th style="width: 45px; text-align: center;">Type</th>
                             <th>Location Name</th>
                             <th>Start</th>
                             <th>End</th>

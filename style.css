@@ -19,7 +19,8 @@ body {
     font-family: 'Inter', sans-serif;
     background-color: var(--bg-dark);
     color: var(--text-main);
-    overflow: hidden; /* Prevent scrolling since it's a full-screen app */
+    overflow: hidden;
+    /* Prevent scrolling since it's a full-screen app */
 }
 
 h1 {
@@ -56,6 +57,9 @@ h1 {
     flex-direction: column;
     gap: 2rem;
     z-index: 10;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
 }
 
 .control-group {
@@ -156,10 +160,11 @@ h1 {
 /* Table */
 .table-container {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    background: rgba(0,0,0,0.2);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 table {
@@ -168,14 +173,15 @@ table {
     font-size: 0.85rem;
 }
 
-th, td {
+th,
+td {
     padding: 0.8rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
 }
 
 th {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     color: var(--text-dim);
     position: sticky;
     top: 0;
@@ -204,10 +210,12 @@ th {
 #map {
     width: 100%;
     height: 100%;
-    background: #111; /* Fallback */
+    background: #111;
+    /* Fallback */
 }
 
-#map-header, #map-footer {
+#map-header,
+#map-footer {
     position: absolute;
     left: 50%;
     transform: translateX(-50%);
@@ -249,6 +257,7 @@ th {
     padding: 6px 10px;
     pointer-events: none;
 }
+
 .leaflet-tooltip-bottom.map-label::before {
     border-bottom-color: rgba(15, 23, 42, 0.95) !important;
 }
@@ -287,7 +296,7 @@ th {
 #time-ruler {
     width: 100%;
     height: var(--ruler-height);
-    background: rgba(255,255,255,0.1);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 5px;
     position: relative;
 }
@@ -340,13 +349,15 @@ th {
     box-shadow: 0 0 10px var(--accent-primary);
     z-index: 5;
     pointer-events: none;
-    left: 0%; /* Will be animated */
+    left: 0%;
+    /* Will be animated */
 }
 
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 6px;
 }
+
 ::-webkit-scrollbar-thumb {
     background: var(--border-color);
     border-radius: 10px;
@@ -357,9 +368,11 @@ th {
     position: absolute;
     width: 100%;
     height: 18px;
-    top: 36px; /* Positioned below tick marks and labels */
+    top: 36px;
+    /* Positioned below tick marks and labels */
     left: 0;
-    pointer-events: auto; /* allow hover */
+    pointer-events: auto;
+    /* allow hover */
 }
 
 .ruler-period-band {
@@ -403,11 +416,13 @@ th {
         fill-opacity: 0.12;
         r: 20px;
     }
+
     50% {
         stroke-width: 4px;
         fill-opacity: 0.28;
         r: 24px;
     }
+
     100% {
         stroke-width: 2px;
         fill-opacity: 0.12;
@@ -427,11 +442,13 @@ th {
         fill-opacity: 0.12;
         r: 16px;
     }
+
     50% {
         stroke-width: 4px;
         fill-opacity: 0.28;
         r: 20px;
     }
+
     100% {
         stroke-width: 2px;
         fill-opacity: 0.12;
@@ -475,4 +492,67 @@ th {
 .dropdown-item:hover {
     background: rgba(59, 130, 246, 0.1);
     color: #2563eb;
+}
+
+/* Table Interactivity & Polish */
+.table-row-interactive {
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.table-row-interactive:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.table-row-interactive:active {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.table-type-icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+    margin: 0 auto;
+    transition: transform 0.2s ease;
+}
+
+.icon-invert {
+    filter: invert(1) drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.table-row-interactive:hover .table-type-icon {
+    transform: scale(1.15);
+}
+
+.table-loc-name {
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+/* Custom Leaflet Popup - Premium Transparent Light Gray Glassmorphism */
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+    background: rgba(241, 245, 249, 0.45) !important;
+    color: #0f172a !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25) !important;
+    border-radius: 8px !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-tip {
+    background: rgba(241, 245, 249, 0.65) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-close-button {
+    color: #475569 !important;
+    padding: 8px 12px 0 0 !important;
+    font-size: 14px !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-close-button:hover {
+    color: #0f172a !important;
 }

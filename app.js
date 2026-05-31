@@ -44,6 +44,19 @@ function formatYearLabel(year) {
     return '0';
 }
 
+function makeLinksClickable(text) {
+    if (!text) return '';
+    // Match URLs starting with http/https or www.
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
+    return text.replace(urlRegex, (url) => {
+        let href = url;
+        if (!href.startsWith('http://') && !href.startsWith('https://')) {
+            href = 'http://' + href;
+        }
+        return `<a href="${href}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 600;">${url}</a>`;
+    });
+}
+
 const updateIndicator = (year) => {
     const range = maxYear - minYear;
     const progress = (year - minYear) / range;
@@ -300,19 +313,9 @@ function processData(rawData) {
     nextBtn.disabled = false;
     prevBtn.disabled = false;
 
-    // Populate table (showing first period as representative)
+    // Clear table initially (will be dynamically populated by updateMarkers)
     dataTableBody.innerHTML = '';
     const visibleLocations = locations.filter(loc => loc['location name'].toLowerCase() !== 'footer');
-    visibleLocations.slice(0, 15).forEach(loc => {
-        const tr = document.createElement('tr');
-        const firstP = loc.periods[0];
-        tr.innerHTML = `
-            <td>${loc['location name']} ${loc.periods.length > 1 ? `(${loc.periods.length} periods)` : ''}</td>
-            <td>${firstP[0]}</td>
-            <td>${firstP[1]}</td>
-        `;
-        dataTableBody.appendChild(tr);
-    });
 
     // Reset markers
     updateMarkers(currentYear);
@@ -738,28 +741,36 @@ function updateMarkers(year) {
                 offset: [0, 16] // Better offset for hover tooltips
             });
 
-            // Build periods string for popup
-            const periodsHtml = loc.periods
-                .map(p => `<li>${p[0]} to ${p[1]}</li>`)
-                .join('');
+            // Calculate overall min/max years across all periods
+            const starts = loc.periods.map(p => p[0]);
+            const ends = loc.periods.map(p => p[1]);
+            const locMinYear = Math.min(...starts);
+            const locMaxYear = Math.max(...ends);
 
             // Use the active period's title and description if available, otherwise fallback
             const title = activePeriod[2] || loc.title || '';
             const desc = activePeriod[3] || loc.description || '';
+            const iconKey = getIconKeyForType(typeVal);
+            const clickableDesc = makeLinksClickable(desc);
 
-            // Add popup with Title & Description
+            // Add popup with Title, Description, Type Icon and Custom CSS Class
             marker.bindPopup(`
-                <div style="font-family: inherit; min-width: 150px;">
-                    <h3 style="margin:0">${title}</h3>
-                    <p style="margin:5px 0; font-size: 12px; color: #555;">${desc}</p>
-                    <div style="font-size: 11px; margin-top: 8px; border-top: 1px solid #eee; padding-top: 5px;">
-                        <strong>Historical Periods:</strong>
-                        <ul style="margin: 5px 0; padding-left: 15px;">
-                            ${periodsHtml}
-                        </ul>
+                <div style="font-family: inherit; min-width: 180px;">
+                    <div style="display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(0, 0, 0, 0.1); padding-bottom: 6px; margin-bottom: 8px;">
+                        <img src="icons/${iconKey}.png" style="width: 24px; height: 24px; flex-shrink: 0;" title="${typeVal || 'Type'}" />
+                        <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700; color: #020617;">${loc['location name']}</h3>
+                    </div>
+                    <div style="font-size: 12px; color: #334155; line-height: 1.4; margin-bottom: 8px;">
+                        <strong>Type:</strong> ${title || 'Unknown'}<br>
+                        ${clickableDesc ? `<p style="margin: 6px 0 0 0;">${clickableDesc}</p>` : ''}
+                    </div>
+                    <div style="font-size: 11px; color: #475569; border-top: 1px dashed rgba(0, 0, 0, 0.1); padding-top: 6px;">
+                        <strong>Historical Lifespan:</strong> ${formatYearLabel(locMinYear)} to ${formatYearLabel(locMaxYear)}
                     </div>
                 </div>
-            `);
+            `, {
+                className: 'custom-leaflet-popup'
+            });
 
             markerGroup.addLayer(marker);
             count++;
@@ -779,6 +790,7 @@ function updateMarkers(year) {
     }
 
     updateDashboard();
+    updateTable();
     console.log(`Updated markers for year ${Math.round(year)}. Count: ${count}`);
 }
 
@@ -866,8 +878,134 @@ function updateDashboard() {
     smeltingEl.textContent = smeltingCount;
 }
 
-// Update dashboard when map is panned or zoomed
-map.on('moveend', updateDashboard);
+function getIconKeyForType(type) {
+    if (!type) return 'unknown';
+    const t = type.toLowerCase().trim();
+
+    if (t.includes('burial') || t.includes('tumulus') || t.includes('cairn')) {
+        return 'burial';
+    }
+    if (t.includes('pottery') || t.includes('ceramics') || t.includes('flint')) {
+        if (t.includes('pottery') || t.includes('ceramics')) {
+            return 'ceramics';
+        }
+        if (t.includes('flint')) {
+            return 'stone';
+        }
+    }
+    if (t.includes('cultic') || t.includes('shrine')) {
+        return 'cultic';
+    }
+    if (t.includes('hunting') || t.includes('trap')) {
+        return 'hunting';
+    }
+    if (t.includes('open_mining') || t.includes('placer')) {
+        return 'open_mining';
+    }
+    if (t.includes('mining') || t.includes('shaft') || t.includes('gallery')) {
+        return 'mining';
+    }
+    if (t.includes('petroglyph') || t.includes('inscription')) {
+        return 'petroglyph';
+    }
+    if (t.includes('quarrying')) {
+        return 'quarrying';
+    }
+    if (t.includes('smelting') || t.includes('slag') || t.includes('furnace')) {
+        return 'smelting';
+    }
+    if (t.includes('stone') || t.includes('wall') || t.includes('feature') || t.includes('structure')) {
+        return 'stone';
+    }
+    if (t.includes('workshop')) {
+        return 'workshop';
+    }
+
+    // Check if the type matches any icon name exactly (case insensitive)
+    for (let name of iconNames) {
+        if (t === name.toLowerCase()) {
+            return name;
+        }
+    }
+
+    return 'unknown';
+}
+
+function updateTable() {
+    if (!dataTableBody) return;
+    dataTableBody.innerHTML = '';
+
+    const bounds = map.getBounds();
+    const visibleLocs = [];
+
+    locations.forEach(loc => {
+        if (loc['location name'].toLowerCase().trim() === 'footer') return;
+
+        // Check if active during the current year
+        const activePeriod = loc.periods.find(p => currentYear >= p[0] && currentYear <= p[1]);
+        if (activePeriod) {
+            // Check if inside the current map viewport bounds
+            const latLng = L.latLng(loc.latitude, loc.longitude);
+            if (bounds.contains(latLng)) {
+                visibleLocs.push({ loc, activePeriod });
+            }
+        }
+    });
+
+    if (visibleLocs.length === 0) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td colspan="4" style="text-align: center; color: var(--text-dim); padding: 2rem;">No visible features in this area / time</td>`;
+        dataTableBody.appendChild(tr);
+        return;
+    }
+
+    visibleLocs.forEach(({ loc, activePeriod }) => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.className = 'table-row-interactive';
+        
+        const typeVal = activePeriod[2] || loc.title || loc.type || '';
+        const iconKey = getIconKeyForType(typeVal);
+
+        const starts = loc.periods.map(p => p[0]);
+        const ends = loc.periods.map(p => p[1]);
+        const locMinYear = Math.min(...starts);
+        const locMaxYear = Math.max(...ends);
+
+        // List of custom colored icons that should NOT be inverted to white
+        const coloredIcons = ['mining', 'smelting', 'cultic', 'petroglyph'];
+        const shouldInvert = !coloredIcons.includes(iconKey);
+
+        tr.innerHTML = `
+            <td style="text-align: center; vertical-align: middle;">
+                <img src="icons/${iconKey}.png" class="table-type-icon${shouldInvert ? ' icon-invert' : ''}" title="${typeVal || 'Unknown'}" />
+            </td>
+            <td>
+                <span class="table-loc-name">${loc['location name']}</span>
+            </td>
+            <td>${formatYearLabel(locMinYear)}</td>
+            <td>${formatYearLabel(locMaxYear)}</td>
+        `;
+
+        tr.addEventListener('click', () => {
+            // Find the marker for this location in markerGroup
+            markerGroup.eachLayer(m => {
+                if (m.getLatLng().lat === loc.latitude && m.getLatLng().lng === loc.longitude) {
+                    m.openPopup();
+                    handleMarkerClick(loc, activePeriod, m);
+                }
+            });
+        });
+
+        dataTableBody.appendChild(tr);
+    });
+}
+
+// Update dashboard and table when map is panned or zoomed
+map.on('moveend', () => {
+    updateDashboard();
+    updateTable();
+});
 
 // Click listener on map background to clear active highlights
 map.on('click', () => {
@@ -945,7 +1083,9 @@ function handleMarkerClick(clickedLoc, clickedPeriod, clickedMarker) {
                         Distance: <strong>${distanceKm} km</strong>
                     </div>
                 </div>
-            `).openPopup();
+            `, {
+                className: 'custom-leaflet-popup'
+            }).openPopup();
         }
     } else if (isSmelting) {
         const matchingMiningSites = [];
@@ -1034,7 +1174,9 @@ function handleMarkerClick(clickedLoc, clickedPeriod, clickedMarker) {
                         Serving: <strong>${matchingMiningSites.length} active mining site${matchingMiningSites.length > 1 ? 's' : ''}</strong>
                     </div>
                 </div>
-            `).openPopup();
+            `, {
+                className: 'custom-leaflet-popup'
+            }).openPopup();
         } else {
             clickedMarker.bindPopup(`
                 <div style="font-family: inherit; font-size: 12px; min-width: 180px; text-align: center;">
@@ -1044,7 +1186,9 @@ function handleMarkerClick(clickedLoc, clickedPeriod, clickedMarker) {
                         No active mining sites are closest to this smelting center.
                     </div>
                 </div>
-            `).openPopup();
+            `, {
+                className: 'custom-leaflet-popup'
+            }).openPopup();
         }
     }
 }
