@@ -143,7 +143,7 @@ if (openBtn && openDropdown) {
             openDropdown.style.display = 'flex';
             openDropdown.innerHTML = '<div class="dropdown-item" style="color: #475569; cursor: default;">Loading server files...</div>';
             
-            fetch('data/files.json')
+            fetch(`data/files.json?v=${Date.now()}`)
                 .then(res => {
                     if (!res.ok) throw new Error('Failed to load server files');
                     return res.json();
