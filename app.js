@@ -1,5 +1,5 @@
 import { formatYearLabel, makeLinksClickable } from './js/utils.js';
-import { loadCSV, fetchServerFileList } from './js/data-loader.js';
+import { loadCSV, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
 import { initMap, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
 
 // Global State
@@ -140,78 +140,7 @@ fileInput.addEventListener('change', (event) => {
     }
 });
 
-/**
- * Pure helper to normalize, group, and merge location periods from raw CSV rows.
- * @param {Array<Object>} rawData 
- * @returns {Array<Object>}
- */
-function normalizeLocationData(rawData) {
-    const locationMap = new Map();
 
-    rawData.forEach(row => {
-        // Normalize keys
-        const normalized = {};
-        for (let key in row) {
-            normalized[key.toLowerCase().trim()] = row[key];
-        }
-
-        const name = normalized['location name'] || normalized['entitylabel'] || '';
-        const isFooter = name && name.toLowerCase().trim() === 'footer';
-
-        const lat = Number(normalized['latitude'] !== undefined ? normalized['latitude'] : normalized['lat']);
-        const lng = Number(normalized['longitude'] !== undefined ? normalized['longitude'] : normalized['lng']);
-
-        if (!name || (!isFooter && (isNaN(lat) || isNaN(lng)))) return;
-
-        const start = Number(normalized['start year'] !== undefined ? normalized['start year'] : normalized['start']);
-        const end = Number(normalized['end time'] !== undefined ? normalized['end time'] : normalized['end']);
-        const titleVal = normalized['title'] || normalized['type'] || '';
-        const descVal = normalized['description'] || normalized['entity'] || '';
-
-        // Store back normalized coordinates and name
-        normalized.latitude = lat;
-        normalized.longitude = lng;
-        normalized['location name'] = name;
-
-        if (locationMap.has(name)) {
-            locationMap.get(name).periods.push([start, end, titleVal, descVal]);
-        } else {
-            const locObj = {
-                ...normalized,
-                periods: [[start, end, titleVal, descVal]]
-            };
-            delete locObj['start year'];
-            delete locObj['end time'];
-            delete locObj['start'];
-            delete locObj['end'];
-            locationMap.set(name, locObj);
-        }
-    });
-
-    return Array.from(locationMap.values());
-}
-
-/**
- * Pure helper to extract overall timeline boundaries and unique event years.
- * @param {Array<Object>} locationsList 
- * @returns {Object} { minYear, maxYear, eventYears }
- */
-function determineYearBounds(locationsList) {
-    let allStarts = [];
-    let allEnds = [];
-    locationsList.forEach(l => {
-        l.periods.forEach(p => {
-            allStarts.push(p[0]);
-            allEnds.push(p[1]);
-        });
-    });
-
-    const minY = Math.min(...allStarts);
-    const maxY = Math.max(...allEnds);
-    const years = Array.from(new Set([...allStarts, ...allEnds])).sort((a, b) => a - b);
-
-    return { minYear: minY, maxYear: maxY, eventYears: years };
-}
 
 /**
  * Updates the map header text content based on loaded survey properties.

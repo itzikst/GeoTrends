@@ -1,0 +1,18 @@
+{
+  "name": "geotrends",
+  "version": "1.0.0",
+  "description": "Geographical Archaeological Trends Visualization Dashboard",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "vitest run js/",
+    "test:watch": "vitest",
+    "test:ux": "playwright test",
+    "test:ux:report": "playwright show-report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.44.1",
+    "vitest": "^1.6.0"
+  }
+}

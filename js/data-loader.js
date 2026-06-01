@@ -47,3 +47,88 @@ export function fetchServerFileList() {
             return response.json();
         });
 }
+
+/**
+ * Normalizes, groups, and merges location periods from raw parsed CSV rows.
+ * @param {Array<Object>} rawData 
+ * @returns {Array<Object>}
+ */
+export function normalizeLocationData(rawData) {
+    if (!rawData || !Array.isArray(rawData)) return [];
+
+    const locationMap = new Map();
+
+    rawData.forEach(row => {
+        // Normalize keys
+        const normalized = {};
+        for (let key in row) {
+            normalized[key.toLowerCase().trim()] = row[key];
+        }
+
+        const name = normalized['location name'] || normalized['entitylabel'] || '';
+        const isFooter = name && name.toLowerCase().trim() === 'footer';
+
+        const lat = Number(normalized['latitude'] !== undefined ? normalized['latitude'] : normalized['lat']);
+        const lng = Number(normalized['longitude'] !== undefined ? normalized['longitude'] : normalized['lng']);
+
+        if (!name || (!isFooter && (isNaN(lat) || isNaN(lng)))) return;
+
+        const start = Number(normalized['start year'] !== undefined ? normalized['start year'] : normalized['start']);
+        const end = Number(normalized['end time'] !== undefined ? normalized['end time'] : normalized['end']);
+        const titleVal = normalized['title'] || normalized['type'] || '';
+        const descVal = normalized['description'] || normalized['entity'] || '';
+
+        // Store back normalized coordinates and name
+        normalized.latitude = lat;
+        normalized.longitude = lng;
+        normalized['location name'] = name;
+
+        if (locationMap.has(name)) {
+            locationMap.get(name).periods.push([start, end, titleVal, descVal]);
+        } else {
+            const locObj = {
+                ...normalized,
+                periods: [[start, end, titleVal, descVal]]
+            };
+            delete locObj['start year'];
+            delete locObj['end time'];
+            delete locObj['start'];
+            delete locObj['end'];
+            locationMap.set(name, locObj);
+        }
+    });
+
+    return Array.from(locationMap.values());
+}
+
+/**
+ * Extracts overall timeline boundaries and unique event milestones.
+ * @param {Array<Object>} locationsList 
+ * @returns {Object} { minYear, maxYear, eventYears }
+ */
+export function determineYearBounds(locationsList) {
+    if (!locationsList || locationsList.length === 0) {
+        return { minYear: 0, maxYear: 0, eventYears: [] };
+    }
+
+    let allStarts = [];
+    let allEnds = [];
+    locationsList.forEach(l => {
+        if (l.periods && Array.isArray(l.periods)) {
+            l.periods.forEach(p => {
+                allStarts.push(p[0]);
+                allEnds.push(p[1]);
+            });
+        }
+    });
+
+    if (allStarts.length === 0) {
+        return { minYear: 0, maxYear: 0, eventYears: [] };
+    }
+
+    const minY = Math.min(...allStarts);
+    const maxY = Math.max(...allEnds);
+    const years = Array.from(new Set([...allStarts, ...allEnds])).sort((a, b) => a - b);
+
+    return { minYear: minY, maxYear: maxY, eventYears: years };
+}
