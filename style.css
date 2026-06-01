@@ -1,3 +1,6 @@
+/* ==========================================================================
+   1. VARIABLES & THEME TOKENS
+   ========================================================================== */
 :root {
     --bg-dark: #0f172a;
     --panel-bg: rgba(255, 255, 255, 0.05);
@@ -9,6 +12,9 @@
     --ruler-height: 10px;
 }
 
+/* ==========================================================================
+   2. RESET & BASE ELEMENTS
+   ========================================================================== */
 * {
     margin: 0;
     padding: 0;
@@ -39,6 +45,9 @@ h1 {
     font-weight: 600;
 }
 
+/* ==========================================================================
+   3. APP CONTAINER & GENERAL LAYOUT
+   ========================================================================== */
 .app-container {
     display: grid;
     grid-template-areas: "sidebar map";
@@ -86,7 +95,15 @@ h1 {
     pointer-events: auto;
 }
 
+/* Close button (hidden on desktop, shown on mobile) */
+.sidebar-close-btn {
+    display: none;
+}
+
 /* Sidebar */
+/* ==========================================================================
+   4. SIDEBAR DRAWER & CONTROL PANEL
+   ========================================================================== */
 .sidebar {
     grid-area: sidebar;
     background: var(--panel-bg);
@@ -200,6 +217,9 @@ h1 {
     filter: grayscale(1);
 }
 
+/* ==========================================================================
+   5. TIME DATA TABLE & METRICS
+   ========================================================================== */
 /* Table */
 .table-container {
     flex: 1;
@@ -231,6 +251,9 @@ th {
     z-index: 2;
 }
 
+/* ==========================================================================
+   6. MAP ELEMENT & FLOATING OVERLAYS
+   ========================================================================== */
 /* Mobile floating prev/next nav (hidden on desktop, shown on mobile) */
 .mobile-map-nav {
     display: none;
@@ -238,6 +261,34 @@ th {
     bottom: 16px;
     left: 15px;
     z-index: 1000;
+}
+
+/* Map Copyright Notice overlay (matches Leaflet attribution style) */
+.map-copyright {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    z-index: 5000; /* Set to 5000 to guarantee it renders on top of Leaflet's control container layer */
+    font-size: 0.85rem; /* Larger font size for premium readability */
+    color: #0078a8; /* Premium attribution blue */
+    background: rgba(255, 255, 255, 0.85); /* Slightly higher opacity white panel to mask background text */
+    padding: 0 5px;
+    margin: 0;
+    pointer-events: none;
+    font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.map-copyright a {
+    color: inherit;
+    text-decoration: none;
+    pointer-events: auto; /* Allow links to be clickable while container lets clicks pass through to map */
+}
+
+.map-copyright a:hover {
+    text-decoration: underline;
+    color: #2563eb;
 }
 
 /* Map Area */
@@ -266,8 +317,9 @@ th {
 #map {
     width: 100%;
     height: 100%;
-    background: #111;
-    /* Fallback */
+    background: #111; /* Fallback */
+    position: relative;
+    z-index: 1; /* Caps Leaflet's internal controls stacking priority, making siblings with higher z-index overlay on top */
 }
 
 #map-header,
@@ -318,6 +370,9 @@ th {
     border-bottom-color: rgba(15, 23, 42, 0.95) !important;
 }
 
+/* ==========================================================================
+   7. TIMELINE RULER & PLAYBACK CONTROLLER
+   ========================================================================== */
 /* Bottom Footer (Ruler) */
 .time-ruler-strip {
     background: #020617;
@@ -615,6 +670,9 @@ th {
     color: #0f172a !important;
 }
 
+/* ==========================================================================
+   8. RESPONSIVE DESIGN (MEDIA QUERIES)
+   ========================================================================== */
 /* Responsive Legend on smaller laptop screen resolutions */
 @media (max-height: 800px) or (max-width: 1366px) {
     .legend {
@@ -810,6 +868,14 @@ th {
     .mobile-map-nav {
         display: flex;
         gap: 0.4rem;
+        bottom: 26px;
+        left: 10px;
+    }
+
+    /* Position copyright directly below navigation buttons on mobile */
+    .map-copyright {
+        bottom: 0;
+        left: 0;
     }
 
     .mobile-map-nav-btn {

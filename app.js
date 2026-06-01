@@ -1,18 +1,6 @@
-/**
- * GeoTrends - Application Logic
- * 1. Initialize Map
- * 2. Handle CSV Upload
- * 3. Animate over 60 seconds
- * 4. Filter markers by Year
- */
-
-// Leaflet CDN Icon Path Fix
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
+import { formatYearLabel, makeLinksClickable } from './js/utils.js';
+import { loadCSV, fetchServerFileList } from './js/data-loader.js';
+import { initMap, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
 
 // Global State
 let locations = [];
@@ -37,26 +25,6 @@ const nextBtn = document.getElementById('next-btn');
 const dataTableBody = document.querySelector('#data-table tbody');
 const timeIndicator = document.getElementById('time-indicator');
 
-// UI Helpers
-function formatYearLabel(year) {
-    if (year < 0) return Math.abs(year) + ' BC';
-    if (year > 0) return year; // optionally add AD
-    return '0';
-}
-
-function makeLinksClickable(text) {
-    if (!text) return '';
-    // Match URLs starting with http/https or www.
-    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/g;
-    return text.replace(urlRegex, (url) => {
-        let href = url;
-        if (!href.startsWith('http://') && !href.startsWith('https://')) {
-            href = 'http://' + href;
-        }
-        return `<a href="${href}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 600;">${url}</a>`;
-    });
-}
-
 const updateIndicator = (year) => {
     const range = maxYear - minYear;
     const progress = (year - minYear) / range;
@@ -68,27 +36,7 @@ const updateIndicator = (year) => {
 };
 
 // 1. Initialize Leaflet Map
-const map = L.map('map', {
-    maxZoom: 18 // Explicitly allow map zooming up to level 18
-}).setView([32.5, 36.0], 8); // Center on Decapolis Region
-
-// Bottom Layer: CartoDB Voyager (Provides clean land colors and blue water without labels)
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-    subdomains: 'abcd',
-    maxZoom: 20
-}).addTo(map);
-
-// Top Layer: ESRI World Hillshade (Provides the sharp 3D relief information)
-L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}?token=${ESRI_API_KEY}`, {
-    maxZoom: 16,
-    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USGS, NGA, NASA, CGIAR, N Robinson, NCEAS, NLS, OS, NMA, Geodatastyrelsen, Rijkswaterstaat, GSA, Geoland, FEMA, Intermap and the GIS user community',
-    className: 'hillshade-layer'
-}).addTo(map);
-
-// Layer Group to store active markers
-const markerGroup = L.layerGroup().addTo(map);
-const highlightLayer = L.layerGroup().addTo(map);
+const { map, markerGroup, highlightLayer } = initMap('map', ESRI_API_KEY);
 
 // 2. Handle CSV Upload
 uploadBtn.addEventListener('click', () => fileInput.click());
@@ -103,21 +51,10 @@ function loadDefaultCSV() {
             return;
         }
         const file = defaultFiles[index];
-        fetch(file)
-            .then(response => {
-                if (response.ok) return response.text();
-                throw new Error('File not found');
-            })
-            .then(csvText => {
+        loadCSV(file)
+            .then(data => {
                 console.log(`Successfully loaded default CSV: ${file}`);
-                Papa.parse(csvText, {
-                    header: true,
-                    dynamicTyping: true,
-                    skipEmptyLines: true,
-                    complete: (results) => {
-                        processData(results.data);
-                    }
-                });
+                processData(data);
             })
             .catch(() => {
                 tryLoad(index + 1);
@@ -143,11 +80,7 @@ if (openBtn && openDropdown) {
             openDropdown.style.display = 'flex';
             openDropdown.innerHTML = '<div class="dropdown-item" style="color: #475569; cursor: default;">Loading server files...</div>';
             
-            fetch(`data/files.json?v=${Date.now()}`)
-                .then(res => {
-                    if (!res.ok) throw new Error('Failed to load server files');
-                    return res.json();
-                })
+            fetchServerFileList()
                 .then(files => {
                     openDropdown.innerHTML = '';
                     if (files.length === 0) {
@@ -167,21 +100,10 @@ if (openBtn && openDropdown) {
                             
                             // Load the selected CSV from the server's data directory
                             const filePath = `data/${fileName}`;
-                            fetch(filePath)
-                                .then(response => {
-                                    if (!response.ok) throw new Error(`Could not load ${fileName}`);
-                                    return response.text();
-                                })
-                                .then(csvText => {
+                            loadCSV(filePath)
+                                .then(data => {
                                     console.log(`Successfully loaded selected server CSV: ${filePath}`);
-                                    Papa.parse(csvText, {
-                                        header: true,
-                                        dynamicTyping: true,
-                                        skipEmptyLines: true,
-                                        complete: (results) => {
-                                            processData(results.data);
-                                        }
-                                    });
+                                    processData(data);
                                 })
                                 .catch(err => {
                                     alert(`Error loading file: ${err.message}`);
@@ -218,8 +140,12 @@ fileInput.addEventListener('change', (event) => {
     }
 });
 
-function processData(rawData) {
-    // 1. Group by name and merge periods
+/**
+ * Pure helper to normalize, group, and merge location periods from raw CSV rows.
+ * @param {Array<Object>} rawData 
+ * @returns {Array<Object>}
+ */
+function normalizeLocationData(rawData) {
     const locationMap = new Map();
 
     rawData.forEach(row => {
@@ -248,15 +174,12 @@ function processData(rawData) {
         normalized['location name'] = name;
 
         if (locationMap.has(name)) {
-            // Already exists, just add the period with its own title/description
             locationMap.get(name).periods.push([start, end, titleVal, descVal]);
         } else {
-            // New location
             const locObj = {
                 ...normalized,
                 periods: [[start, end, titleVal, descVal]]
             };
-            // Remove the single start/end properties to avoid confusion
             delete locObj['start year'];
             delete locObj['end time'];
             delete locObj['start'];
@@ -265,62 +188,95 @@ function processData(rawData) {
         }
     });
 
-    locations = Array.from(locationMap.values());
+    return Array.from(locationMap.values());
+}
 
-    // Dynamically update map header title
-    const mapHeader = document.getElementById('map-header');
-    if (mapHeader) {
-        const isTimna = locations.some(l => l['location name'] && l['location name'].toLowerCase().includes('site_'));
-        if (isTimna) {
-            mapHeader.textContent = "Timna Valley Archaeological Sites & Features";
-        } else {
-            mapHeader.textContent = "Geographical Archaeological Trends";
-        }
-    }
-
-    locations = Array.from(locationMap.values());
-
-    if (locations.length === 0) {
-        alert('Invalid CSV data structure. Please use columns: location name, latitude, longitude, start year, end time, title, description');
-        return;
-    }
-
-    // 2. Compute global min/max year
+/**
+ * Pure helper to extract overall timeline boundaries and unique event years.
+ * @param {Array<Object>} locationsList 
+ * @returns {Object} { minYear, maxYear, eventYears }
+ */
+function determineYearBounds(locationsList) {
     let allStarts = [];
     let allEnds = [];
-    locations.forEach(l => {
+    locationsList.forEach(l => {
         l.periods.forEach(p => {
             allStarts.push(p[0]);
             allEnds.push(p[1]);
         });
     });
 
-    minYear = Math.min(...allStarts);
-    maxYear = Math.max(...allEnds);
+    const minY = Math.min(...allStarts);
+    const maxY = Math.max(...allEnds);
+    const years = Array.from(new Set([...allStarts, ...allEnds])).sort((a, b) => a - b);
 
-    // Create sorted array of unique event years for hopping
-    eventYears = Array.from(new Set([...allStarts, ...allEnds])).sort((a, b) => a - b);
+    return { minYear: minY, maxYear: maxY, eventYears: years };
+}
 
-    currentYear = minYear;
+/**
+ * Updates the map header text content based on loaded survey properties.
+ * @param {Array<Object>} locationsList 
+ */
+function updateMapHeaderTitle(locationsList) {
+    const mapHeader = document.getElementById('map-header');
+    if (!mapHeader) return;
+
+    const isTimna = locationsList.some(l => l['location name'] && l['location name'].toLowerCase().includes('site_'));
+    if (isTimna) {
+        mapHeader.textContent = "Timna Valley Archaeological Sites & Features";
+    } else {
+        mapHeader.textContent = "Geographical Archaeological Trends";
+    }
+}
+
+/**
+ * Updates sliders, indicators, tick marks, and period bands.
+ * @param {number} minY 
+ * @param {number} maxY 
+ */
+function initializeTimelineControls(minY, maxY) {
+    currentYear = minY;
     elapsedTime = 0;
     updateIndicator(currentYear);
-    drawRulerMarkers(minYear, maxYear);
-    drawPeriodBands(minYear, maxYear);
+    drawRulerMarkers(minY, maxY);
+    drawPeriodBands(minY, maxY);
+}
 
-    // Enable buttons
+function processData(rawData) {
+    // 1. Normalize raw data rows
+    const parsedLocations = normalizeLocationData(rawData);
+
+    if (parsedLocations.length === 0) {
+        alert('Invalid CSV data structure. Please use columns: location name, latitude, longitude, start year, end time, title, description');
+        return;
+    }
+
+    locations = parsedLocations;
+
+    // 2. Set Map Header Title
+    updateMapHeaderTitle(locations);
+
+    // 3. Compute global boundaries
+    const boundsObj = determineYearBounds(locations);
+    minYear = boundsObj.minYear;
+    maxYear = boundsObj.maxYear;
+    eventYears = boundsObj.eventYears;
+
+    // 4. Draw timeline components
+    initializeTimelineControls(minYear, maxYear);
+
+    // 5. Enable control buttons
     playPauseBtn.disabled = false;
     resetBtn.disabled = false;
     nextBtn.disabled = false;
     prevBtn.disabled = false;
 
-    // Clear table initially (will be dynamically populated by updateMarkers)
+    // 6. Reset table & markers
     dataTableBody.innerHTML = '';
-    const visibleLocations = locations.filter(loc => loc['location name'].toLowerCase() !== 'footer');
-
-    // Reset markers
     updateMarkers(currentYear);
 
-    // Zoom to fit all points with a 10% border
+    // 7. Auto-pan/zoom map to fit all points
+    const visibleLocations = locations.filter(loc => loc['location name'].toLowerCase() !== 'footer');
     if (visibleLocations.length > 0) {
         const bounds = L.latLngBounds(visibleLocations.map(l => [l.latitude, l.longitude]));
         map.fitBounds(bounds.pad(0.1));
@@ -419,90 +375,7 @@ function animationStep(timestamp) {
     }
 }
 
-// Define Custom Icons
-const starIcon = L.icon({
-    iconUrl: 'tel.png',
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
-    popupAnchor: [0, -24],
-});
 
-const destroyIcon = L.icon({
-    iconUrl: 'destroy.png',
-    iconSize: [48, 48],
-    iconAnchor: [24, 24],
-    popupAnchor: [0, -24],
-});
-
-// Map each type to an icon stored in the icons folder
-const typeIcons = {};
-const iconNames = [
-    'unknown', 'burial', 'ceramics', 'cultic', 'hunting',
-    'mining', 'open_mining', 'petroglyph', 'quarrying',
-    'smelting', 'stone', 'workshop'
-];
-
-iconNames.forEach(name => {
-    typeIcons[name] = L.icon({
-        iconUrl: `icons/${name}.png`,
-        iconSize: [32, 32],
-        iconAnchor: [16, 16],
-        popupAnchor: [0, -16]
-    });
-});
-
-function getIconForType(type) {
-    if (!type) return typeIcons['unknown'];
-    const t = type.toLowerCase().trim();
-
-    if (t.includes('burial') || t.includes('tumulus') || t.includes('cairn')) {
-        return typeIcons['burial'];
-    }
-    if (t.includes('pottery') || t.includes('ceramics') || t.includes('flint')) {
-        if (t.includes('pottery') || t.includes('ceramics')) {
-            return typeIcons['ceramics'];
-        }
-        if (t.includes('flint')) {
-            return typeIcons['stone'];
-        }
-    }
-    if (t.includes('cultic') || t.includes('shrine')) {
-        return typeIcons['cultic'];
-    }
-    if (t.includes('hunting') || t.includes('trap')) {
-        return typeIcons['hunting'];
-    }
-    if (t.includes('open_mining') || t.includes('placer')) {
-        return typeIcons['open_mining'];
-    }
-    if (t.includes('mining') || t.includes('shaft') || t.includes('gallery')) {
-        return typeIcons['mining'];
-    }
-    if (t.includes('petroglyph') || t.includes('inscription')) {
-        return typeIcons['petroglyph'];
-    }
-    if (t.includes('quarrying')) {
-        return typeIcons['quarrying'];
-    }
-    if (t.includes('smelting') || t.includes('slag') || t.includes('furnace')) {
-        return typeIcons['smelting'];
-    }
-    if (t.includes('stone') || t.includes('wall') || t.includes('feature') || t.includes('structure')) {
-        return typeIcons['stone'];
-    }
-    if (t.includes('workshop')) {
-        return typeIcons['workshop'];
-    }
-
-    // Check if the type matches any icon name exactly (case insensitive)
-    for (let name of iconNames) {
-        if (t === name.toLowerCase()) {
-            return typeIcons[name];
-        }
-    }
-
-    return typeIcons['unknown'];
-}
 
 // Add a beautiful Map Legend
 const legend = L.control({ position: 'bottomright' });
@@ -887,59 +760,6 @@ function updateDashboard() {
 
     miningEl.textContent = miningCount;
     smeltingEl.textContent = smeltingCount;
-}
-
-function getIconKeyForType(type) {
-    if (!type) return 'unknown';
-    const t = type.toLowerCase().trim();
-
-    if (t.includes('burial') || t.includes('tumulus') || t.includes('cairn')) {
-        return 'burial';
-    }
-    if (t.includes('pottery') || t.includes('ceramics') || t.includes('flint')) {
-        if (t.includes('pottery') || t.includes('ceramics')) {
-            return 'ceramics';
-        }
-        if (t.includes('flint')) {
-            return 'stone';
-        }
-    }
-    if (t.includes('cultic') || t.includes('shrine')) {
-        return 'cultic';
-    }
-    if (t.includes('hunting') || t.includes('trap')) {
-        return 'hunting';
-    }
-    if (t.includes('open_mining') || t.includes('placer')) {
-        return 'open_mining';
-    }
-    if (t.includes('mining') || t.includes('shaft') || t.includes('gallery')) {
-        return 'mining';
-    }
-    if (t.includes('petroglyph') || t.includes('inscription')) {
-        return 'petroglyph';
-    }
-    if (t.includes('quarrying')) {
-        return 'quarrying';
-    }
-    if (t.includes('smelting') || t.includes('slag') || t.includes('furnace')) {
-        return 'smelting';
-    }
-    if (t.includes('stone') || t.includes('wall') || t.includes('feature') || t.includes('structure')) {
-        return 'stone';
-    }
-    if (t.includes('workshop')) {
-        return 'workshop';
-    }
-
-    // Check if the type matches any icon name exactly (case insensitive)
-    for (let name of iconNames) {
-        if (t === name.toLowerCase()) {
-            return name;
-        }
-    }
-
-    return 'unknown';
 }
 
 function updateTable() {

@@ -20,16 +20,16 @@
 </head>
 
 <body>
-    <div class="app-container">
+    <div class="app-container" role="application" aria-label="GeoArcheology survey visualization dashboard">
         <!-- Mobile Hamburger Toggle Button (visible only on small screens) -->
-        <button id="menu-toggle" class="menu-toggle-btn" aria-label="Toggle Sidebar Menu">
+        <button id="menu-toggle" class="menu-toggle-btn" aria-label="Toggle Sidebar Menu" aria-expanded="false" aria-controls="sidebar">
             <svg viewBox="0 0 24 24" width="24" height="24">
                 <path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
             </svg>
         </button>
 
         <!-- Left Panel: Controls and Table -->
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar" aria-label="Control Panel and Event Catalog">
             <!-- Mobile Close Button (only visible in drawer mode) -->
             <button class="sidebar-close-btn" id="sidebar-close" aria-label="Close sidebar">
                 <svg viewBox="0 0 24 24" width="20" height="20">
@@ -97,7 +97,7 @@
         </aside>
 
         <!-- Main Map Area -->
-        <div class="map-wrapper">
+        <section class="map-wrapper" aria-label="Interactive Map Dashboard">
             <div class="map-container">
                 <main id="map"></main>
                 <div id="map-header">שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל</div>
@@ -116,6 +116,11 @@
                         </svg>
                     </button>
                 </div>
+
+                <!-- Map Copyright Notice -->
+                <div class="map-copyright" id="map-copyright">
+                    &copy; <a href="https://www.facebook.com/itzik.stauber" target="_blank" rel="noopener noreferrer">Itzik Stauber</a> / <a href="https://exploreisrael.online/en" target="_blank" rel="noopener noreferrer">Explore Israel</a>
+                </div>
             </div>
 
             <!-- Bottom Time Ruler Strip -->
@@ -130,7 +135,7 @@
                     </div>
                 </div>
             </footer>
-        </div>
+        </section>
     </div>
 
     <!-- Mobile Sidebar Backdrop Overlay -->
@@ -149,8 +154,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- Configuration -->
     <script src="config.js"></script>
-    <!-- Main Application Logic -->
-    <script src="app.js"></script>
+    <!-- Main Application Logic (Loaded as ES Module) -->
+    <script type="module" src="app.js"></script>
 </body>
 
 </html>
