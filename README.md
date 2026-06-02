@@ -50,7 +50,7 @@ Navigate through chronological events smoothly:
 * **Period Indicators:** Visual colored strips segmenting historical eras (e.g., Iron Age I, Iron Age II, etc.) to give immediate historical context.
 * **Year Display:** Large display highlighting the active historical year.
 
-<img src="assets/timeline_actual.png" alt="Time Ruler Footer" width="600" style="border-radius: 6px; border: 1px solid #ccc; margin: 10px 0;" />
+<img src="assets/timeline_actual.png" alt="Time Ruler Footer" width="800" style="border-radius: 6px; border: 1px solid #ccc; margin: 10px 0;" />
 
 ---
 
