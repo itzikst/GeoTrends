@@ -24,29 +24,29 @@ The Interactive Data Table shows all archaeological records that were active in 
 <img src="assets/table_container.png" alt="Interactive Data Table" width="220" style="border-radius: 6px; border: 1px solid #ccc; margin: 10px 0;" />
 
 * **Rows:** Each row displays the properties of a single site: **Type** (represented by color-coded indicator icons), **Name**, and the period in which it was active - **Start Year**, and **End Year**.
-ckucking a table row selects the coresponding site on the map.
+clicking a table row selects the coresponding site on the map.
 
 ### B. Data Source Management
 You can load datasets using two methods:
 
 <img src="assets/open_buttons.png" alt="Data Source Selection Buttons" width="220" style="border-radius: 6px; border: 1px solid #ccc; margin: 10px 0;" />
 
-* **Open Project (Server Files):** Click this button to open a dropdown of pre-loaded CSV datasets on the server (e.g., Timna Data, Iron Age Cities, Decapolis).
-* **Open Local File:** Click this button to upload a local `.csv` file directly from your computer. The dashboard will automatically parse and display it.
+* **Open Project:** Click this button to open a dropdown of all available datasets (e.g., Timna Data, Iron Age Cities, Decapolis).
+* **Open Local File:** Click this button to upload a local `.csv` file directly from your computer. The dashboard will automatically parse and display it (CSV format description TBD)
 
 ### C. Animation and Playback Controls
-Navigate through chronological events smoothly:
+Move forward and backward in time:
 
 <img src="assets/player_controls.png" alt="Playback Controls" width="200" style="border-radius: 6px; border: 1px solid #ccc; margin: 10px 0;" />
 
 * **Reset (🔄):** Jumps the timeline back to the initial start year.
-* **Previous Event (⏮️):** Moves the timeline step-by-step backward to the previous archaeological milestone.
+* **Previous Event (⏮️):** Moves the timeline one step backward to the previous chronological event, which can be start or end date of a site activity
 * **Play / Pause (▶️ / ⏸️):** Automatically animates the map over the timeline to show dynamic urban shifts.
-* **Next Event (⏭️):** Steps the timeline forward to the next chronological event.
+* **Next Event (⏭️):** Moves the timeline one step forward to the next chronological event, which can be start or end date of a site activity
 
 ### D. Time Ruler & Period Strip
 * **Interactive Marker:** The marker shifts along the timeline as the year progresses.
-* **Period Indicators:** Visual colored strips segmenting historical eras (e.g., Iron Age I, Iron Age II, etc.) to give immediate historical context.
+* **Period Indicators:** Visual colored strips segmenting historical eras (e.g., Early Bronze Age, Iron Age II, etc.).
 * **Year Display:** Large display highlighting the active historical year.
 
 <img src="assets/timeline_actual.png" alt="Time Ruler Footer" width="800" style="border-radius: 6px; border: 1px solid #ccc; margin: 10px 0;" />
