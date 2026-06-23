@@ -53,7 +53,9 @@ Move forward and backward in time:
 
 ---
 
-## 3. Responsive & Mobile Support
-The dashboard is fully optimized for mobile devices:
-* **Mobile Drawer Sidebar:** A hamburger button collapses the control panel on mobile screens, leaving the map clear.
-* **Floating Map Navigation:** Floating navigation buttons appear directly on the map for easy one-handed stepping through events.
+## 3. Interactive Mao
+Shows the locations of sites on a blank topographic map
+* **Map:** supports standard pan and zoom actions.
+* **Markers:** clicjing a marker opens an Info Window with additional details and a link to the original DB record.
+* **Smelting site:** clicjing a smelting site (indicated by a fire icon) shows the mining sites that are nearest to it.
+* **Mining site:** clicjing a mining site (indicated by a green mining pick icon) shows the mining sites that are nearest to it.
