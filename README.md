@@ -24,7 +24,7 @@ The Interactive Data Table shows all archaeological records that were active in 
 <img src="assets/table_container.png" alt="Interactive Data Table" width="220" style="border-radius: 6px; border: 1px solid #ccc; margin: 10px 0;" />
 
 * **Rows:** Each row displays the properties of a single site: **Type** (represented by color-coded indicator icons), **Name**, and the period in which it was active - **Start Year**, and **End Year**.
-* **Dashboard Overview:** By linking tabular listings directly to map markers and timeline indicators, the dashboard allows users to cross-reference geographic locations with exact dating periods at a glance.
+ckucking a table row selects the coresponding site on the map.
 
 ### B. Data Source Management
 You can load datasets using two methods:
