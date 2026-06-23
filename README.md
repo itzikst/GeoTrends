@@ -53,9 +53,9 @@ Move forward and backward in time:
 
 ---
 
-## 3. Interactive Mao
+## 3. Interactive Map
 Shows the locations of sites on a blank topographic map
 * **Map:** supports standard pan and zoom actions.
-* **Markers:** clicjing a marker opens an Info Window with additional details and a link to the original DB record.
-* **Smelting site:** clicjing a smelting site (indicated by a fire icon) shows the mining sites that are nearest to it.
-* **Mining site:** clicjing a mining site (indicated by a green mining pick icon) shows the mining sites that are nearest to it.
+* **Markers:** clicking a marker opens an Info Window with additional details and a link to the original DB record.
+* **Smelting site:** clicking a smelting site (indicated by a fire icon) shows the mining sites that are nearest to it.
+* **Mining site:** clicking a mining site (indicated by a green mining pick icon) shows the mining sites that are nearest to it.
