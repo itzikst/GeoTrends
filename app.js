@@ -8,10 +8,13 @@ let minYear = 0;
 let maxYear = 0;
 let currentYear = 0;
 let isRunning = false;
-let lastTimestamp = 0;
-let elapsedTime = 0;
 let eventYears = [];
-const totalDuration = 60000; // 60 seconds in ms
+
+// Animation variables for segment-based playback (5s per segment)
+let segmentStartYear = 0;
+let segmentEndYear = 0;
+let segmentStartTime = 0;
+const segmentDuration = 5000; // 5 seconds in ms
 
 // DOM Elements
 const uploadBtn = document.getElementById('upload-btn');
@@ -165,7 +168,6 @@ function updateMapHeaderTitle(locationsList) {
  */
 function initializeTimelineControls(minY, maxY) {
     currentYear = minY;
-    elapsedTime = 0;
     updateIndicator(currentYear);
     drawRulerMarkers(minY, maxY);
     drawPeriodBands(minY, maxY);
@@ -234,8 +236,15 @@ playPauseBtn.addEventListener('click', () => {
 
 function startAnimation() {
     if (isRunning || currentYear >= maxYear) return;
+
+    const nextTimestamp = eventYears.find(y => y > currentYear);
+    if (nextTimestamp === undefined) return;
+
     isRunning = true;
-    lastTimestamp = performance.now();
+    segmentStartYear = currentYear;
+    segmentEndYear = nextTimestamp;
+    segmentStartTime = performance.now();
+
     setPlayState(true);
     requestAnimationFrame(animationStep);
 }
@@ -248,7 +257,6 @@ function pauseAnimation() {
 resetBtn.addEventListener('click', () => {
     pauseAnimation();
     currentYear = minYear;
-    elapsedTime = 0;
     syncUI();
 });
 
@@ -257,7 +265,6 @@ nextBtn.addEventListener('click', () => {
     const nextYear = eventYears.find(y => y > currentYear);
     if (nextYear !== undefined) {
         currentYear = nextYear;
-        syncElapsedTime();
         syncUI();
     }
 });
@@ -268,16 +275,9 @@ prevBtn.addEventListener('click', () => {
     const prevYear = [...eventYears].reverse().find(y => y < currentYear);
     if (prevYear !== undefined) {
         currentYear = prevYear;
-        syncElapsedTime();
         syncUI();
     }
 });
-
-function syncElapsedTime() {
-    if (maxYear === minYear) return;
-    const progress = (currentYear - minYear) / (maxYear - minYear);
-    elapsedTime = progress * totalDuration;
-}
 
 function syncUI() {
     updateIndicator(currentYear);
@@ -287,20 +287,30 @@ function syncUI() {
 function animationStep(timestamp) {
     if (!isRunning) return;
 
-    const delta = timestamp - lastTimestamp;
-    lastTimestamp = timestamp;
-    elapsedTime += delta;
+    const elapsed = timestamp - segmentStartTime;
+    const progress = Math.min(elapsed / segmentDuration, 1);
 
-    const progress = Math.min(elapsedTime / totalDuration, 1);
-
-    // Update current year
-    currentYear = minYear + progress * (maxYear - minYear);
+    // Interpolate current year within this segment
+    currentYear = segmentStartYear + progress * (segmentEndYear - segmentStartYear);
     syncUI();
 
     if (progress < 1) {
         requestAnimationFrame(animationStep);
     } else {
-        pauseAnimation();
+        // We reached the end of this segment
+        currentYear = segmentEndYear;
+        syncUI();
+
+        // Find next segment
+        const nextTimestamp = eventYears.find(y => y > currentYear);
+        if (nextTimestamp !== undefined) {
+            segmentStartYear = currentYear;
+            segmentEndYear = nextTimestamp;
+            segmentStartTime = timestamp - (elapsed - segmentDuration); // adjust for overshoot
+            requestAnimationFrame(animationStep);
+        } else {
+            pauseAnimation();
+        }
     }
 }
 
