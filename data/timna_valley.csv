@@ -1,4 +1,5 @@
 location name,latitude,longitude,start year,end time,title,description
+header,,,,,,Timna Valley Archaeological Sites & Features
 Site_710,29.7684146,34.96017158,-10000,-5800,Cultic,https://timna-database.wikibase.cloud/entity/Q655
 Site_710,29.7684146,34.96017158,-1500,-1200,Cultic,https://timna-database.wikibase.cloud/entity/Q655
 Site_710,29.7684146,34.96017158,-1200,-1000,Cultic,https://timna-database.wikibase.cloud/entity/Q655

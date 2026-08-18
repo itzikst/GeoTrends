@@ -177,37 +177,46 @@ export function initMap(domId, esriApiKey) {
     const gsiGeology50k = L.layerGroup();
     const gsiVectorUrl = 'https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer';
 
-    fetch(`${gsiVectorUrl}/resources/styles/root.json`)
-        .then(res => res.json())
-        .then(style => {
-            style.sprite = `${gsiVectorUrl}/resources/sprites/sprite`;
-            style.glyphs = `${gsiVectorUrl}/resources/fonts/{fontstack}/{range}.pbf`;
-            if (style.sources && style.sources.esri) {
-                style.sources.esri = {
-                    type: 'vector',
-                    bounds: [34.2642, 29.5044, 35.9622, 33.3407],
-                    minzoom: 0,
-                    maxzoom: 24,
-                    scheme: 'xyz',
-                    tiles: [`${gsiVectorUrl}/tile/{z}/{y}/{x}.pbf`]
-                };
-            }
-            if (style.layers) {
-                style.layers.forEach(l => {
-                    delete l.maxzoom;
-                    delete l.minzoom;
-                });
-            }
-            const vectorLayer = L.esri.Vector.vectorTileLayer(gsiVectorUrl, {
-                style: style,
-                opacity: 0.8,
-                attribution: 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>'
-            });
-            window._gsiVectorTileLayer = vectorLayer;
+    try {
+        const vectorLayer = L.esri.Vector.vectorTileLayer(gsiVectorUrl, {
+            opacity: 0.8,
+            style: function (style) {
+                if (style) {
+                    style.sprite = `${gsiVectorUrl}/resources/sprites/sprite`;
+                    style.glyphs = `${gsiVectorUrl}/resources/fonts/{fontstack}/{range}.pbf`;
+                    if (style.sources && style.sources.esri) {
+                        style.sources.esri.bounds = [34.2642, 29.5044, 35.9622, 33.3407];
+                    }
+                    if (style.layers) {
+                        // Filter out KeyMap sheet grid lines and sheet grid labels
+                        style.layers = style.layers.filter(l => !l.id.toLowerCase().includes('keymap'));
+                    }
+                }
+                return style;
+            },
+            attribution: 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>'
+        });
+        window._gsiVectorTileLayer = vectorLayer;
+        gsiGeology50k.addLayer(vectorLayer);
+    } catch (err) {
+        console.error('Failed to create GSI vector tile layer:', err);
+    }
 
-            gsiGeology50k.addLayer(vectorLayer);
-        })
-        .catch(err => console.error('Failed to load GSI 1:50k vector style:', err));
+    // Dynamic zoom listener to hide GSI geology layer when zoomed out below zoom 10
+    map.on('zoomend', function () {
+        const activeBtn = document.querySelector('.basemap-btn.active');
+        if (activeBtn && activeBtn.getAttribute('data-basemap') === 'geologic') {
+            if (map.getZoom() < 10) {
+                if (map.hasLayer(gsiGeology50k)) {
+                    map.removeLayer(gsiGeology50k);
+                }
+            } else {
+                if (!map.hasLayer(gsiGeology50k)) {
+                    map.addLayer(gsiGeology50k);
+                }
+            }
+        }
+    });
 
     // Map click listener for GSI Geology Vector Tile features in Timna / Israel
     map.on('click', function (e) {
@@ -230,6 +239,9 @@ export function initMap(domId, esriApiKey) {
 
         if (!glMap || typeof glMap.queryRenderedFeatures !== 'function') return;
 
+        // At low zoom levels (< 11), GSI tiles only send empty/macro region data without detailed formation info
+        if (map.getZoom() < 11) return;
+
         try {
             const point = glMap.project([e.latlng.lng, e.latlng.lat]);
             const bbox = [[point.x - 10, point.y - 10], [point.x + 10, point.y + 10]];
@@ -244,6 +256,9 @@ export function initMap(domId, esriApiKey) {
             if (layerId.includes('/')) {
                 layerId = layerId.split('/')[1];
             }
+
+            // Skip showing popup if layer ID/name is missing, empty, or just generic region placeholder
+            if (!layerId || layerId.toLowerCase().includes('region') || layerId.toLowerCase().includes('boundary')) return;
 
             let formattedName = layerId;
             if (layerId.includes(' - ')) {

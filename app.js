@@ -77,7 +77,7 @@ uploadBtn.addEventListener('click', () => fileInput.click());
 
 // Auto-load a default CSV if it exists
 function loadDefaultCSV() {
-    const defaultFiles = ['data/timna_valley.csv', 'Timna_Converted.csv', 'data/iron_age_cities.csv', 'decapolis.csv'];
+    const defaultFiles = ['data/timna_valley.csv', 'data/faynan_data.csv', 'Timna_Converted.csv', 'data/iron_age_cities.csv', 'decapolis.csv'];
 
     let tryLoad = (index) => {
         if (index >= defaultFiles.length) {
@@ -184,6 +184,21 @@ function updateMapHeaderTitle(locationsList) {
     const mapHeader = document.getElementById('map-header');
     if (!mapHeader) return;
 
+    const headerLoc = locationsList.find(l => l['location name'] && l['location name'].toLowerCase().trim() === 'header');
+    if (headerLoc) {
+        let headerText = '';
+        if (headerLoc.periods && headerLoc.periods.length > 0) {
+            headerText = headerLoc.periods[0][3] || headerLoc.periods[0][2] || '';
+        }
+        if (!headerText) {
+            headerText = headerLoc.description || headerLoc.title || '';
+        }
+        if (headerText) {
+            mapHeader.textContent = headerText;
+            return;
+        }
+    }
+
     const isTimna = locationsList.some(l => l['location name'] && l['location name'].toLowerCase().includes('site_'));
     if (isTimna) {
         mapHeader.textContent = "Timna Valley Archaeological Sites & Features";
@@ -238,7 +253,10 @@ function processData(rawData) {
     updateMarkers(currentYear);
 
     // 7. Auto-pan/zoom map to fit all points
-    const visibleLocations = locations.filter(loc => loc['location name'].toLowerCase() !== 'footer');
+    const visibleLocations = locations.filter(loc => {
+        const n = loc['location name'].toLowerCase().trim();
+        return n !== 'footer' && n !== 'header';
+    });
     if (visibleLocations.length > 0) {
         const bounds = L.latLngBounds(visibleLocations.map(l => [l.latitude, l.longitude]));
         map.fitBounds(bounds.pad(0.1));

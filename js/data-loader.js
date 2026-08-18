@@ -67,11 +67,12 @@ export function normalizeLocationData(rawData) {
 
         const name = normalized['location name'] || normalized['entitylabel'] || '';
         const isFooter = name && name.toLowerCase().trim() === 'footer';
+        const isHeader = name && name.toLowerCase().trim() === 'header';
 
         const lat = Number(normalized['latitude'] !== undefined ? normalized['latitude'] : normalized['lat']);
         const lng = Number(normalized['longitude'] !== undefined ? normalized['longitude'] : normalized['lng']);
 
-        if (!name || (!isFooter && (isNaN(lat) || isNaN(lng)))) return;
+        if (!name || (!isFooter && !isHeader && (isNaN(lat) || isNaN(lng)))) return;
 
         const start = Number(normalized['start year'] !== undefined ? normalized['start year'] : normalized['start']);
         const end = Number(normalized['end time'] !== undefined ? normalized['end time'] : normalized['end']);
