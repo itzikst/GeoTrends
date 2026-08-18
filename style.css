@@ -346,10 +346,92 @@ th {
 }
 
 #map-footer {
-    bottom: 20px;
-    font-size: 1.1rem;
-    max-width: 80%;
+    position: absolute;
+    bottom: 16px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    z-index: 1000;
+    font-size: 0.9rem;
+    padding: 8px 16px;
+    max-width: 55%;
     font-weight: 400;
+    white-space: normal;
+    background: rgba(15, 23, 42, 0.88);
+    color: var(--text-main);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+    margin: 0 !important;
+}
+
+.map-copyright {
+    position: absolute;
+    bottom: 16px !important;
+    left: 16px !important;
+    right: auto !important;
+    z-index: 1000;
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    max-width: fit-content;
+    white-space: nowrap;
+    background: rgba(15, 23, 42, 0.88);
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+    margin: 0 !important;
+}
+
+.map-copyright a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.map-copyright a:hover {
+    text-decoration: underline;
+}
+
+.leaflet-bottom {
+    position: absolute !important;
+    bottom: 16px !important;
+    z-index: 999 !important;
+    pointer-events: none;
+}
+
+.leaflet-bottom.leaflet-left {
+    bottom: 16px !important;
+    left: 16px !important;
+}
+
+.leaflet-bottom.leaflet-right {
+    bottom: 16px !important;
+    right: 16px !important;
+}
+
+.leaflet-bottom .leaflet-control {
+    margin: 0 !important;
+    pointer-events: auto;
+}
+
+.leaflet-control-attribution {
+    background: rgba(15, 23, 42, 0.88) !important;
+    color: var(--text-muted) !important;
+    font-size: 0.75rem !important;
+    padding: 6px 12px !important;
+    border-radius: 6px !important;
+    border: 1px solid var(--border-color) !important;
+    backdrop-filter: blur(8px) !important;
+    margin: 0 !important;
+    line-height: 1.2 !important;
+}
+
+.leaflet-control-attribution a {
+    color: var(--accent-color) !important;
 }
 
 /* Base Map Selector Pill Widget - Top Left next to Zoom Controls */
@@ -716,7 +798,7 @@ th {
    ========================================================================== */
 /* Responsive Legend on smaller laptop screen resolutions */
 .leaflet-bottom {
-    margin-bottom: 55px !important;
+    margin-bottom: 0 !important;
 }
 
 @media (max-height: 800px) or (max-width: 1366px) {
@@ -827,11 +909,22 @@ th {
     }
 
     #map-footer {
-        font-size: 0.85rem;
-        padding: 0.5rem 0.75rem;
-        max-width: 90%;
-        bottom: 100px;
-        /* Clear the time ruler */
+        font-size: 0.8rem;
+        padding: 6px 10px;
+        max-width: 85vw;
+        bottom: 48px !important;
+    }
+
+    .map-copyright {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+        bottom: 12px !important;
+        left: 10px !important;
+    }
+
+    .leaflet-bottom.leaflet-right {
+        bottom: 12px !important;
+        right: 10px !important;
     }
 
     /* Stack the bottom timeline strip vertically */
