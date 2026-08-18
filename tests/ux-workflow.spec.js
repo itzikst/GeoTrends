@@ -109,4 +109,29 @@ test.describe('GeoTrends - Interactive UX Staging Tests', () => {
         await expect(exploreLink).toHaveAttribute('href', 'https://exploreisrael.online/en');
         await expect(exploreLink).toHaveAttribute('target', '_blank');
     });
+
+    test('should switch between base map views (Topographic, Satellite, Geologic)', async ({ page }) => {
+        const selector = page.locator('#basemap-selector');
+        await expect(selector).toBeVisible();
+
+        const topoBtn = page.locator('.basemap-btn[data-basemap="topo"]');
+        const satBtn = page.locator('.basemap-btn[data-basemap="satellite"]');
+        const geoBtn = page.locator('.basemap-btn[data-basemap="geologic"]');
+
+        await expect(topoBtn).toHaveClass(/active/);
+
+        // Switch to Satellite
+        await satBtn.click();
+        await expect(satBtn).toHaveClass(/active/);
+        await expect(topoBtn).not.toHaveClass(/active/);
+
+        // Switch to Geologic
+        await geoBtn.click();
+        await expect(geoBtn).toHaveClass(/active/);
+        await expect(satBtn).not.toHaveClass(/active/);
+
+        // Switch back to Topographic
+        await topoBtn.click();
+        await expect(topoBtn).toHaveClass(/active/);
+    });
 });

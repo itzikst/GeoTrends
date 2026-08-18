@@ -1,6 +1,6 @@
 import { formatYearLabel, makeLinksClickable } from './js/utils.js';
 import { loadCSV, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
-import { initMap, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
+import { initMap, switchBaseMap, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
 
 // Global State
 let locations = [];
@@ -39,7 +39,38 @@ const updateIndicator = (year) => {
 };
 
 // 1. Initialize Leaflet Map
-const { map, markerGroup, highlightLayer } = initMap('map', ESRI_API_KEY);
+const { map, markerGroup, highlightLayer, baseMapLayers } = initMap('map', ESRI_API_KEY);
+window.map = map;
+
+// Base Map Selector Event Handler
+const basemapSelector = document.getElementById('basemap-selector');
+if (basemapSelector) {
+    const basemapBtns = basemapSelector.querySelectorAll('.basemap-btn');
+    basemapBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const selectedMap = btn.getAttribute('data-basemap');
+            basemapBtns.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            switchBaseMap(map, baseMapLayers, selectedMap);
+
+            const geoLegend = document.getElementById('geology-legend-section');
+            const legendDiv = document.querySelector('.info.legend');
+            if (geoLegend) {
+                if (selectedMap === 'geologic') {
+                    geoLegend.style.display = 'block';
+                    if (legendDiv && !legendDiv.classList.contains('minimized')) {
+                        legendDiv.style.maxHeight = '480px';
+                    }
+                } else {
+                    geoLegend.style.display = 'none';
+                    if (legendDiv && !legendDiv.classList.contains('minimized')) {
+                        legendDiv.style.maxHeight = '320px';
+                    }
+                }
+            }
+        });
+    });
+}
 
 // 2. Handle CSV Upload
 uploadBtn.addEventListener('click', () => fileInput.click());
@@ -374,7 +405,23 @@ legend.onAdd = function (map) {
         `;
     }
 
-    legendHtml += `</div>`;
+    legendHtml += `</div>
+        <div id="geology-legend-section" class="geology-legend-section" style="display: none; margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.15); padding-top: 8px;">
+            <h5 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;">Geology Units</h5>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 8px; font-size: 11px;">
+                <div style="display: flex; align-items: center; gap: 6px;" title="Precambrian Granites & Basement"><span style="width: 14px; height: 14px; background: #D93636; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Precambrian Granite</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Timna & Amudei Shelomo Formations"><span style="width: 14px; height: 14px; background: #FF6C0A; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Timna Formation</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Burj Formation & Um Ishrin Sandstone"><span style="width: 14px; height: 14px; background: #C27555; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Burj & Um Ishrin</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Amir Formation (Lower Cretaceous)"><span style="width: 14px; height: 14px; background: #A8C978; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Amir Formation</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Evrona / Avrona Formation"><span style="width: 14px; height: 14px; background: #9BBEC0; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Evrona Formation</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Kurnub Group Sandstone"><span style="width: 14px; height: 14px; background: #B0903F; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Kurnub Sandstone</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Cretaceous Limestone & Chalk"><span style="width: 14px; height: 14px; background: #8FF04F; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Cretaceous Limestone</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Tertiary Formations"><span style="width: 14px; height: 14px; background: #FFF500; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Tertiary Formations</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Quaternary Basalt"><span style="width: 14px; height: 14px; background: #334155; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Quaternary Basalt</span></div>
+                <div style="display: flex; align-items: center; gap: 6px;" title="Quaternary Alluvium & Sand"><span style="width: 14px; height: 14px; background: #FFFFB6; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Quaternary Alluvium</span></div>
+            </div>
+        </div>
+    `;
     div.innerHTML = legendHtml;
 
     // Attach Toggle logic for Minimize / Maximize
@@ -400,7 +447,8 @@ legend.onAdd = function (map) {
             iconMin.style.display = 'block';
             iconMax.style.display = 'none';
             div.style.width = '320px';
-            div.style.maxHeight = '320px';
+            const isGeologic = document.querySelector('.basemap-btn[data-basemap="geologic"]')?.classList.contains('active');
+            div.style.maxHeight = isGeologic ? '480px' : '320px';
             div.style.overflowY = 'auto';
             div.style.padding = '12px 16px';
         }
