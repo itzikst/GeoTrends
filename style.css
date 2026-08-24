@@ -317,7 +317,7 @@ th {
 #map {
     width: 100%;
     height: 100%;
-    background: #111; /* Fallback */
+    background: #f8fafc; /* Light background prevents multiply blackouts */
     position: relative;
     z-index: 1; /* Caps Leaflet's internal controls stacking priority, making siblings with higher z-index overlay on top */
 }

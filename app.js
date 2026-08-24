@@ -1,6 +1,7 @@
 import { formatYearLabel, makeLinksClickable } from './js/utils.js';
 import { loadCSV, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
 import { initMap, switchBaseMap, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
+import { parseAppUrl, updateUrlState, BASEMAP_TO_VIEW, FILE_TO_REPO } from './js/url-parser.js';
 
 // Global State
 let locations = [];
@@ -9,12 +10,34 @@ let maxYear = 0;
 let currentYear = 0;
 let isRunning = false;
 let eventYears = [];
+let currentRepo = 'timna';
+let currentViewParam = 'topo';
 
 // Animation variables for segment-based playback (5s per segment)
 let segmentStartYear = 0;
 let segmentEndYear = 0;
 let segmentStartTime = 0;
 const segmentDuration = 5000; // 5 seconds in ms
+
+const HISTORICAL_PERIODS = [
+    { name: 'Neolithic', start: -10000, end: -5800, color: 'rgba(59, 130, 246, 0.35)' },
+    { name: 'Chalcolithic', start: -5800, end: -3600, color: 'rgba(16, 185, 129, 0.35)' },
+    { name: 'EB', start: -3600, end: -2000, color: 'rgba(245, 158, 11, 0.35)' },
+    { name: 'MB', start: -2000, end: -1500, color: 'rgba(239, 68, 68, 0.35)' },
+    { name: 'LB', start: -1500, end: -1200, color: 'rgba(139, 92, 246, 0.35)' },
+    { name: 'EI', start: -1200, end: -1000, color: 'rgba(236, 72, 153, 0.35)' },
+    { name: 'LI', start: -1000, end: -586, color: 'rgba(20, 184, 166, 0.35)' },
+    { name: 'Per', start: -586, end: -37, color: 'rgba(79, 70, 229, 0.35)' },
+    { name: 'Rom', start: -37, end: 324, color: 'rgba(217, 70, 239, 0.35)' },
+    { name: 'Byz', start: 324, end: 638, color: 'rgba(14, 165, 233, 0.35)' },
+    { name: 'EM', start: 638, end: 1099, color: 'rgba(132, 204, 22, 0.35)' },
+    { name: 'Cru', start: 1099, end: 1291, color: 'rgba(244, 63, 94, 0.35)' },
+    { name: 'Mam', start: 1291, end: 1517, color: 'rgba(249, 115, 22, 0.35)' },
+    { name: 'Ott', start: 1517, end: 1917, color: 'rgba(100, 116, 139, 0.35)' },
+    { name: 'Mod', start: 1917, end: 2026, color: 'rgba(16, 185, 129, 0.4)' }
+];
+
+const DESTROY_THRESHOLD = 10; // Years before hiding to show destruction icon
 
 // DOM Elements
 const uploadBtn = document.getElementById('upload-btn');
@@ -39,8 +62,44 @@ const updateIndicator = (year) => {
 };
 
 // 1. Initialize Leaflet Map
-const { map, markerGroup, highlightLayer, baseMapLayers } = initMap('map', ESRI_API_KEY);
+const esriApiKey = (typeof ESRI_API_KEY !== 'undefined') ? ESRI_API_KEY : (window.ESRI_API_KEY || '');
+const { map, markerGroup, highlightLayer, baseMapLayers } = initMap('map', esriApiKey);
 window.map = map;
+
+// Helper to switch basemap UI and sync URL state
+function setBasemapUIAndLayer(basemapKey, updateUrl = true) {
+    if (!basemapKey) return;
+    const basemapBtns = document.querySelectorAll('.basemap-btn');
+    basemapBtns.forEach(btn => {
+        if (btn.getAttribute('data-basemap') === basemapKey) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    switchBaseMap(map, baseMapLayers, basemapKey);
+
+    const geoLegend = document.getElementById('geology-legend-section');
+    const legendDiv = document.querySelector('.info.legend');
+    if (geoLegend) {
+        if (basemapKey === 'geologic') {
+            geoLegend.style.display = 'block';
+            if (legendDiv && !legendDiv.classList.contains('minimized')) {
+                legendDiv.style.maxHeight = '480px';
+            }
+        } else {
+            geoLegend.style.display = 'none';
+            if (legendDiv && !legendDiv.classList.contains('minimized')) {
+                legendDiv.style.maxHeight = '320px';
+            }
+        }
+    }
+
+    currentViewParam = BASEMAP_TO_VIEW[basemapKey] || 'topo';
+    if (updateUrl) {
+        updateUrlState(currentRepo, currentViewParam, false);
+    }
+}
 
 // Base Map Selector Event Handler
 const basemapSelector = document.getElementById('basemap-selector');
@@ -49,25 +108,7 @@ if (basemapSelector) {
     basemapBtns.forEach(btn => {
         btn.addEventListener('click', () => {
             const selectedMap = btn.getAttribute('data-basemap');
-            basemapBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            switchBaseMap(map, baseMapLayers, selectedMap);
-
-            const geoLegend = document.getElementById('geology-legend-section');
-            const legendDiv = document.querySelector('.info.legend');
-            if (geoLegend) {
-                if (selectedMap === 'geologic') {
-                    geoLegend.style.display = 'block';
-                    if (legendDiv && !legendDiv.classList.contains('minimized')) {
-                        legendDiv.style.maxHeight = '480px';
-                    }
-                } else {
-                    geoLegend.style.display = 'none';
-                    if (legendDiv && !legendDiv.classList.contains('minimized')) {
-                        legendDiv.style.maxHeight = '320px';
-                    }
-                }
-            }
+            setBasemapUIAndLayer(selectedMap, true);
         });
     });
 }
@@ -75,29 +116,47 @@ if (basemapSelector) {
 // 2. Handle CSV Upload
 uploadBtn.addEventListener('click', () => fileInput.click());
 
-// Auto-load a default CSV if it exists
-function loadDefaultCSV() {
-    const defaultFiles = ['data/timna_valley.csv', 'data/faynan_data.csv', 'Timna_Converted.csv', 'data/iron_age_cities.csv', 'decapolis.csv'];
+// Load CSV according to URL repo and view parameters scheme app-url/repo?view=topo|geo|sattelites
+function loadInitialRepoFromURL() {
+    const { repo, viewParam, basemapKey, filePath } = parseAppUrl();
+    currentRepo = repo;
+    currentViewParam = viewParam;
 
-    let tryLoad = (index) => {
-        if (index >= defaultFiles.length) {
-            console.log('No default CSV loaded');
-            return;
-        }
-        const file = defaultFiles[index];
-        loadCSV(file)
-            .then(data => {
-                console.log(`Successfully loaded default CSV: ${file}`);
-                processData(data);
-            })
-            .catch(() => {
-                tryLoad(index + 1);
-            });
-    };
+    setBasemapUIAndLayer(basemapKey, false);
+    updateUrlState(currentRepo, currentViewParam, false);
 
-    tryLoad(0);
+    loadCSV(filePath)
+        .then(data => {
+            console.log(`Successfully loaded URL repo '${currentRepo}': ${filePath}`);
+            processData(data);
+        })
+        .catch((err) => {
+            console.warn(`Failed to load ${filePath}, attempting default fallback:`, err);
+            loadCSV('data/timna_valley.csv')
+                .then(data => processData(data))
+                .catch(e => console.error('Fallback CSV load error:', e));
+        });
 }
-loadDefaultCSV();
+loadInitialRepoFromURL();
+
+// Listen for browser Back/Forward navigation
+window.addEventListener('popstate', () => {
+    const { repo, viewParam, basemapKey, filePath } = parseAppUrl();
+    const repoChanged = (repo !== currentRepo);
+    const viewChanged = (viewParam !== currentViewParam);
+
+    currentRepo = repo;
+    currentViewParam = viewParam;
+
+    if (viewChanged) {
+        setBasemapUIAndLayer(basemapKey, false);
+    }
+    if (repoChanged) {
+        loadCSV(filePath)
+            .then(data => processData(data))
+            .catch(err => console.error('Popstate load error:', err));
+    }
+});
 
 // 2b. Open Server File Dropdown Logic
 const openBtn = document.getElementById('open-btn');
@@ -134,6 +193,11 @@ if (openBtn && openDropdown) {
                             
                             // Load the selected CSV from the server's data directory
                             const filePath = `data/${fileName}`;
+                            const matchedRepo = FILE_TO_REPO[fileName.toLowerCase()] || FILE_TO_REPO[filePath.toLowerCase()];
+                            if (matchedRepo) {
+                                currentRepo = matchedRepo;
+                                updateUrlState(currentRepo, currentViewParam, false);
+                            }
                             loadCSV(filePath)
                                 .then(data => {
                                     console.log(`Successfully loaded selected server CSV: ${filePath}`);
@@ -491,7 +555,9 @@ legend.onAdd = function (map) {
 
 legend.addTo(map);
 
-const DESTROY_THRESHOLD = 10; // Years before hiding to show destruction icon
+// Sync initial basemap UI state (ensures geology legend visibility is updated once legend DOM exists)
+const initialUrl = parseAppUrl();
+setBasemapUIAndLayer(initialUrl.basemapKey, false);
 
 function drawRulerMarkers(minY, maxY) {
     const markersContainer = document.getElementById('ruler-markers');
@@ -518,24 +584,6 @@ function drawRulerMarkers(minY, maxY) {
         markersContainer.appendChild(marker);
     }
 }
-
-const HISTORICAL_PERIODS = [
-    { name: 'Neolithic', start: -10000, end: -5800, color: 'rgba(59, 130, 246, 0.35)' },
-    { name: 'Chalcolithic', start: -5800, end: -3600, color: 'rgba(16, 185, 129, 0.35)' },
-    { name: 'EB', start: -3600, end: -2000, color: 'rgba(245, 158, 11, 0.35)' },
-    { name: 'MB', start: -2000, end: -1500, color: 'rgba(239, 68, 68, 0.35)' },
-    { name: 'LB', start: -1500, end: -1200, color: 'rgba(139, 92, 246, 0.35)' },
-    { name: 'EI', start: -1200, end: -1000, color: 'rgba(236, 72, 153, 0.35)' },
-    { name: 'LI', start: -1000, end: -586, color: 'rgba(20, 184, 166, 0.35)' },
-    { name: 'Per', start: -586, end: -37, color: 'rgba(79, 70, 229, 0.35)' },
-    { name: 'Rom', start: -37, end: 324, color: 'rgba(217, 70, 239, 0.35)' },
-    { name: 'Byz', start: 324, end: 638, color: 'rgba(14, 165, 233, 0.35)' },
-    { name: 'EM', start: 638, end: 1099, color: 'rgba(132, 204, 22, 0.35)' },
-    { name: 'Cru', start: 1099, end: 1291, color: 'rgba(244, 63, 94, 0.35)' },
-    { name: 'Mam', start: 1291, end: 1517, color: 'rgba(249, 115, 22, 0.35)' },
-    { name: 'Ott', start: 1517, end: 1917, color: 'rgba(100, 116, 139, 0.35)' },
-    { name: 'Mod', start: 1917, end: 2026, color: 'rgba(16, 185, 129, 0.4)' }
-];
 
 function drawPeriodBands(minY, maxY) {
     const container = document.getElementById('ruler-periods');

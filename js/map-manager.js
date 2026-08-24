@@ -137,7 +137,7 @@ export function initMap(domId, esriApiKey) {
         maxZoom: 20
     });
 
-    const topoHillshade = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}?token=${esriApiKey}`, {
+    const topoHillshade = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 16,
         attribution: 'Tiles &copy; Esri, USGS',
         className: 'hillshade-layer'
@@ -158,18 +158,17 @@ export function initMap(domId, esriApiKey) {
 
     const satelliteGroup = L.layerGroup([satImagery, satLabels]);
 
-    // 3. Geologic Map Layer (Geological Survey of Israel gov.il 1:50,000 Ultra-Detail Map + Hillshade)
-    // Macrostrat has been completely removed per request.
-    const geologicPhysical = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Physical_Map/MapServer/tile/{z}/{y}/{x}', {
-        maxZoom: 18,
-        maxNativeZoom: 8,
-        attribution: 'Tiles &copy; Esri &mdash; Source: US National Park Service'
+    // 3. Geologic Map Layer (Voyager + ESRI Hillshade Base + High-Detail Geology Layers on Top)
+    const geologicVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 20
     });
 
-    const geologicHillshade = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}?token=${esriApiKey}`, {
-        maxZoom: 18,
-        maxNativeZoom: 16,
-        attribution: 'Tiles &copy; Esri, USGS'
+    const geologicHillshade = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
+        maxZoom: 16,
+        attribution: 'Tiles &copy; Esri, USGS',
+        className: 'hillshade-layer'
     });
 
     // GSI 1:50,000 High-Detail Official Map (494 detailed formation layers covering Timna & Israel)
@@ -178,26 +177,49 @@ export function initMap(domId, esriApiKey) {
     const gsiVectorUrl = 'https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer';
 
     try {
-        const vectorLayer = L.esri.Vector.vectorTileLayer(gsiVectorUrl, {
-            opacity: 0.8,
-            style: function (style) {
-                if (style) {
-                    style.sprite = `${gsiVectorUrl}/resources/sprites/sprite`;
-                    style.glyphs = `${gsiVectorUrl}/resources/fonts/{fontstack}/{range}.pbf`;
-                    if (style.sources && style.sources.esri) {
-                        style.sources.esri.bounds = [34.2642, 29.5044, 35.9622, 33.3407];
+        const createLayer = (L.esri && L.esri.Vector && typeof L.esri.Vector.vectorTileLayer === 'function')
+            ? L.esri.Vector.vectorTileLayer
+            : (L.esri && typeof L.esri.vectorTileLayer === 'function' ? L.esri.vectorTileLayer : null);
+
+        if (createLayer) {
+            const vectorLayer = createLayer(gsiVectorUrl, {
+                opacity: 0.8,
+                style: function (style) {
+                    if (style) {
+                        style.sprite = `${gsiVectorUrl}/resources/sprites/sprite`;
+                        style.glyphs = `${gsiVectorUrl}/resources/fonts/{fontstack}/{range}.pbf`;
+                        if (style.sources && style.sources.esri) {
+                            style.sources.esri.bounds = [34.2642, 29.5044, 35.9622, 33.3407];
+                        }
+                        if (style.layers) {
+                            // Filter out KeyMap sheet grid lines and sheet grid labels
+                            style.layers = style.layers.filter(l => !l.id.toLowerCase().includes('keymap'));
+                            style.layers.forEach(l => {
+                                delete l.minzoom;
+                                delete l.maxzoom;
+                            });
+                        }
                     }
-                    if (style.layers) {
-                        // Filter out KeyMap sheet grid lines and sheet grid labels
-                        style.layers = style.layers.filter(l => !l.id.toLowerCase().includes('keymap'));
+                    return style;
+                },
+                attribution: 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>'
+            });
+            if (vectorLayer) {
+                // Safeguard against esri-leaflet-vector 4.2.3 onRemove crash with nested LayerGroups
+                const origOnRemove = vectorLayer.onRemove;
+                vectorLayer.onRemove = function (mapInstance) {
+                    try {
+                        if (origOnRemove) {
+                            origOnRemove.call(this, mapInstance || this._map);
+                        }
+                    } catch (e) {
+                        console.warn('Suppressed vectorLayer onRemove error:', e);
                     }
-                }
-                return style;
-            },
-            attribution: 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>'
-        });
-        window._gsiVectorTileLayer = vectorLayer;
-        gsiGeology50k.addLayer(vectorLayer);
+                };
+                window._gsiVectorTileLayer = vectorLayer;
+                gsiGeology50k.addLayer(vectorLayer);
+            }
+        }
     } catch (err) {
         console.error('Failed to create GSI vector tile layer:', err);
     }
@@ -286,6 +308,7 @@ export function initMap(domId, esriApiKey) {
         if (code.startsWith('pC'))  return '#D93636'; // Precambrian Granite / Basement (GSI #D93636)
         if (code === 'Cs')          return '#C27555'; // Burj & Um Ishrin / Shehoret (GSI #C27555)
         if (code.startsWith('Ks1')) return '#A8C978'; // Amir / Evrona / Kurnub (GSI #A8C978)
+        if (code.startsWith('Ks'))  return '#8FF04F'; // Cretaceous Limestone (GSI #8FF04F)
         if (code.startsWith('K'))   return '#8FF04F'; // Cretaceous Limestone (GSI #8FF04F)
         if (code.startsWith('O'))   return '#059669'; // Ordovician
         if (code.startsWith('S'))   return '#0284c7'; // Silurian
@@ -293,23 +316,26 @@ export function initMap(domId, esriApiKey) {
         if (code.startsWith('J'))   return '#2563eb'; // Jurassic
         if (code.startsWith('T'))   return '#FFF500'; // Tertiary (GSI #FFF500)
         if (code.startsWith('Qb'))  return '#334155'; // Quaternary Basalt
-        if (code.startsWith('Q'))   return '#FFFFB6'; // Quaternary Alluvium & Sand (GSI #FFFFB6)
+        if (code.startsWith('Q') || code.startsWith('q')) return '#E5DE95'; // Quaternary Alluvium & Sand
         return '#a8a29e';
     }
 
     // High-Resolution Jordan Geology GeoJSON Layer (1,455 high-detail geological polygons covering Faynan & Jordan)
     const jordanGeologyLayer = L.layerGroup();
     fetch('data/jordan_geology.geojson')
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return res.json();
+        })
         .then(geoJsonData => {
             const geoLayer = L.geoJSON(geoJsonData, {
                 style: function (feature) {
                     const code = feature.properties ? feature.properties.Codierung : '';
                     return {
                         fillColor: getJordanGeologyColor(code),
-                        fillOpacity: 0.75,
+                        fillOpacity: 0.65,
                         color: '#475569',
-                        weight: 0.8
+                        weight: 1
                     };
                 },
                 onEachFeature: function (feature, layer) {
@@ -319,7 +345,7 @@ export function initMap(domId, esriApiKey) {
                         if (code === 'Cs') desc = 'Burj Formation & Sandstone (DSL Ore Bed, Salib & Um Ishrin)';
                         else if (code.startsWith('pC')) desc = 'Precambrian Basement / Granites';
                         else if (code.startsWith('K')) desc = 'Amir, Evrona & Kurnub Formations (Cretaceous)';
-                        else if (code.startsWith('Q')) desc = 'Quaternary Alluvium & Sediments';
+                        else if (code.startsWith('Q') || code.startsWith('q')) desc = 'Quaternary Alluvium & Sediments';
                         layer.bindPopup(`<strong>Geological Formation (${code}):</strong><br/><em>${desc}</em>`);
                     }
                 }
@@ -328,16 +354,13 @@ export function initMap(domId, esriApiKey) {
         })
         .catch(err => console.error('Failed to load Jordan geology GeoJSON:', err));
 
-    const geologicGroup = L.layerGroup([geologicPhysical, geologicHillshade, jordanGeologyLayer, gsiGeology50k]);
+    const geologicGroup = L.layerGroup([geologicVoyager, geologicHillshade, jordanGeologyLayer, gsiGeology50k]);
 
     const baseMapLayers = {
         topo: topoGroup,
         satellite: satelliteGroup,
         geologic: geologicGroup
     };
-
-    // Default to Topographic map
-    baseMapLayers.topo.addTo(map);
 
     const markerGroup = L.layerGroup().addTo(map);
     const highlightLayer = L.layerGroup().addTo(map);
@@ -352,13 +375,22 @@ export function initMap(domId, esriApiKey) {
  * @param {string} key 'topo' | 'satellite' | 'geologic'
  */
 export function switchBaseMap(map, baseMapLayers, key) {
-    Object.values(baseMapLayers).forEach(layerGroup => {
-        if (map.hasLayer(layerGroup)) {
-            map.removeLayer(layerGroup);
+    Object.keys(baseMapLayers).forEach(k => {
+        const layerGroup = baseMapLayers[k];
+        if (k !== key && map.hasLayer(layerGroup)) {
+            try {
+                map.removeLayer(layerGroup);
+            } catch (err) {
+                console.warn(`Handled removeLayer notice on ${k}:`, err);
+            }
         }
     });
 
-    if (baseMapLayers[key]) {
-        baseMapLayers[key].addTo(map);
+    if (baseMapLayers[key] && !map.hasLayer(baseMapLayers[key])) {
+        try {
+            map.addLayer(baseMapLayers[key]);
+        } catch (err) {
+            console.error(`Error adding basemap ${key}:`, err);
+        }
     }
 }
