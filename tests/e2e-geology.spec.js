@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Geology View & Hillshade E2E Tests', () => {
+test.describe('Geology View & Project Config E2E Tests', () => {
 
-    test('Timna Geologic View loads GSI geology, hillshade, and synced legend', async ({ page }) => {
+    test('Timna Geologic View loads project config, GSI geology, hillshade, and dynamic legend', async ({ page }) => {
         const pageErrors = [];
         page.on('pageerror', err => pageErrors.push(err.message));
 
@@ -13,15 +13,27 @@ test.describe('Geology View & Hillshade E2E Tests', () => {
         // Verify no uncaught JavaScript exceptions occurred
         expect(pageErrors).toEqual([]);
 
+        // Verify dynamic project header from timna.json
+        const headerText = await page.textContent('#map-header');
+        expect(headerText.trim()).toBe('Timna Valley Archaeological Sites & Features');
+
         // Verify active basemap button
         const activeBasemap = await page.getAttribute('.basemap-btn.active', 'data-basemap');
         expect(activeBasemap).toBe('geologic');
 
-        // Verify geology legend section is visible
-        const geologyLegendDisplay = await page.evaluate(() => {
-            return document.getElementById('geology-legend-section')?.style.display;
+        // Verify geology legend section is visible and populated dynamically
+        const geologyLegendStats = await page.evaluate(() => {
+            const sec = document.getElementById('geology-legend-section');
+            const legendDiv = document.querySelector('.info.legend');
+            return {
+                display: sec?.style.display,
+                maxHeight: legendDiv?.style.maxHeight,
+                itemCount: document.querySelectorAll('.geology-legend-grid > div').length
+            };
         });
-        expect(geologyLegendDisplay).toBe('block');
+        expect(geologyLegendStats.display).toBe('block');
+        expect(geologyLegendStats.maxHeight).toBe('520px');
+        expect(geologyLegendStats.itemCount).toBeGreaterThan(0);
 
         // Verify map center is near Timna
         const center = await page.evaluate(() => window.map.getCenter());
@@ -40,7 +52,7 @@ test.describe('Geology View & Hillshade E2E Tests', () => {
         expect(layerStats.markers).toBeGreaterThan(0);
     });
 
-    test('Faynan Geologic View loads Jordan geology polygons, hillshade, and markers', async ({ page }) => {
+    test('Faynan Geologic View loads project config, Jordan geology polygons, and dynamic legend from GeoJSON', async ({ page }) => {
         const pageErrors = [];
         page.on('pageerror', err => pageErrors.push(err.message));
 
@@ -51,15 +63,24 @@ test.describe('Geology View & Hillshade E2E Tests', () => {
         // Verify no uncaught JavaScript exceptions occurred
         expect(pageErrors).toEqual([]);
 
+        // Verify dynamic project header from faynan.json
+        const headerText = await page.textContent('#map-header');
+        expect(headerText.trim()).toBe('Faynan Archaeological District Mining & Metallurgy');
+
         // Verify active basemap button
         const activeBasemap = await page.getAttribute('.basemap-btn.active', 'data-basemap');
         expect(activeBasemap).toBe('geologic');
 
-        // Verify geology legend section is visible
+        // Verify geology legend section is visible and contains swatches extracted from Jordan GeoJSON
         const geologyLegendDisplay = await page.evaluate(() => {
             return document.getElementById('geology-legend-section')?.style.display;
         });
         expect(geologyLegendDisplay).toBe('block');
+
+        const legendItemCount = await page.evaluate(() => {
+            return document.querySelectorAll('.geology-legend-grid > div').length;
+        });
+        expect(legendItemCount).toBeGreaterThan(0);
 
         // Verify map center is near Faynan
         const center = await page.evaluate(() => window.map.getCenter());
@@ -78,6 +99,37 @@ test.describe('Geology View & Hillshade E2E Tests', () => {
         expect(layerStats.tileImages).toBeGreaterThan(0);
         expect(layerStats.svgPaths).toBeGreaterThan(100);
         expect(layerStats.markers).toBeGreaterThan(0);
+    });
+
+    test('Iron Age Geologic View loads project config, Hebrew header, and GSI geology', async ({ page }) => {
+        const pageErrors = [];
+        page.on('pageerror', err => pageErrors.push(err.message));
+
+        await page.goto('http://localhost:8080/iron_age?view=geologic', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('.leaflet-tile-pane img', { timeout: 10000 });
+        await page.waitForTimeout(2000);
+
+        // Verify no uncaught JavaScript exceptions occurred
+        expect(pageErrors).toEqual([]);
+
+        // Verify dynamic Hebrew project header from iron_age.json
+        const headerText = await page.textContent('#map-header');
+        expect(headerText.trim()).toBe('שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל');
+
+        // Verify active basemap button
+        const activeBasemap = await page.getAttribute('.basemap-btn.active', 'data-basemap');
+        expect(activeBasemap).toBe('geologic');
+
+        // Verify map center is near central Israel / Samaria (lat ~32)
+        const center = await page.evaluate(() => window.map.getCenter());
+        expect(center.lat).toBeGreaterThan(31.5);
+        expect(center.lat).toBeLessThan(33.0);
+
+        // Verify markers exist on map
+        const markerCount = await page.evaluate(() => {
+            return document.querySelectorAll('.leaflet-marker-pane img').length;
+        });
+        expect(markerCount).toBeGreaterThan(0);
     });
 
 });

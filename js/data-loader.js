@@ -4,6 +4,20 @@
  */
 
 /**
+ * Loads the project configuration JSON for a given repository.
+ * @param {string} repo 
+ * @returns {Promise<Object>}
+ */
+export function loadProjectConfig(repo) {
+    const configUrl = `data/${repo}.json`;
+    return fetch(`${configUrl}?v=${Date.now()}`)
+        .then(response => {
+            if (!response.ok) throw new Error(`Failed to load project config: ${configUrl}`);
+            return response.json();
+        });
+}
+
+/**
  * Loads a CSV file from a given URL/path and parses it into JSON objects.
  * @param {string} filePath 
  * @returns {Promise<Array<Object>>}

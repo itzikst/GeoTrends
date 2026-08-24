@@ -1,0 +1,7 @@
+{
+  "repo": "faynan",
+  "dataFile": "data/faynan_data.csv",
+  "header": "Faynan Archaeological District Mining & Metallurgy",
+  "geologyType": "geojson",
+  "geologyData": "data/jordan_geology.geojson"
+}

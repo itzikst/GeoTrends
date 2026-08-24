@@ -1,7 +1,7 @@
 import { formatYearLabel, makeLinksClickable } from './js/utils.js';
-import { loadCSV, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
-import { initMap, switchBaseMap, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
-import { parseAppUrl, updateUrlState, BASEMAP_TO_VIEW, FILE_TO_REPO } from './js/url-parser.js';
+import { loadCSV, loadProjectConfig, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
+import { initMap, switchBaseMap, setProjectGeology, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
+import { parseAppUrl, updateUrlState, BASEMAP_TO_VIEW, VIEW_TO_BASEMAP, FILE_TO_REPO } from './js/url-parser.js';
 
 // Global State
 let locations = [];
@@ -66,6 +66,38 @@ const esriApiKey = (typeof ESRI_API_KEY !== 'undefined') ? ESRI_API_KEY : (windo
 const { map, markerGroup, highlightLayer, baseMapLayers } = initMap('map', esriApiKey);
 window.map = map;
 
+// Dynamic geology legend updater
+let currentGeologyLegendItems = [];
+function updateGeologyLegend(items) {
+    currentGeologyLegendItems = items || [];
+    const geoSection = document.getElementById('geology-legend-section');
+    if (!geoSection) return;
+    const grid = geoSection.querySelector('.geology-legend-grid');
+    if (!grid) return;
+
+    if (!items || items.length === 0) {
+        geoSection.style.display = 'none';
+        grid.innerHTML = '';
+        return;
+    }
+
+    grid.innerHTML = items.map(item => `
+        <div style="display: flex; align-items: center; gap: 6px;" title="${item.label}">
+            <span style="width: 14px; height: 14px; background: ${item.color}; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span>
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.label}</span>
+        </div>
+    `).join('');
+
+    const isGeologic = document.querySelector('.basemap-btn[data-basemap="geologic"]')?.classList.contains('active');
+    const legendDiv = document.querySelector('.info.legend');
+    if (isGeologic) {
+        geoSection.style.display = 'block';
+        if (legendDiv && !legendDiv.classList.contains('minimized')) {
+            legendDiv.style.maxHeight = '520px';
+        }
+    }
+}
+
 // Helper to switch basemap UI and sync URL state
 function setBasemapUIAndLayer(basemapKey, updateUrl = true) {
     if (!basemapKey) return;
@@ -81,17 +113,15 @@ function setBasemapUIAndLayer(basemapKey, updateUrl = true) {
 
     const geoLegend = document.getElementById('geology-legend-section');
     const legendDiv = document.querySelector('.info.legend');
-    if (geoLegend) {
-        if (basemapKey === 'geologic') {
-            geoLegend.style.display = 'block';
-            if (legendDiv && !legendDiv.classList.contains('minimized')) {
-                legendDiv.style.maxHeight = '480px';
-            }
-        } else {
-            geoLegend.style.display = 'none';
-            if (legendDiv && !legendDiv.classList.contains('minimized')) {
-                legendDiv.style.maxHeight = '320px';
-            }
+    if (basemapKey === 'geologic') {
+        if (geoLegend) geoLegend.style.display = 'block';
+        if (legendDiv && !legendDiv.classList.contains('minimized')) {
+            legendDiv.style.maxHeight = '520px';
+        }
+    } else {
+        if (geoLegend) geoLegend.style.display = 'none';
+        if (legendDiv && !legendDiv.classList.contains('minimized')) {
+            legendDiv.style.maxHeight = '320px';
         }
     }
 
@@ -116,45 +146,61 @@ if (basemapSelector) {
 // 2. Handle CSV Upload
 uploadBtn.addEventListener('click', () => fileInput.click());
 
-// Load CSV according to URL repo and view parameters scheme app-url/repo?view=topo|geo|sattelites
-function loadInitialRepoFromURL() {
-    const { repo, viewParam, basemapKey, filePath } = parseAppUrl();
-    currentRepo = repo;
-    currentViewParam = viewParam;
+let currentProjectHeader = '';
 
-    setBasemapUIAndLayer(basemapKey, false);
-    updateUrlState(currentRepo, currentViewParam, false);
+// Load project according to URL repo and view parameters scheme app-url/repo?view=topo|geo|sattelites
+function loadProject(repo, viewParam = null, basemapKey = null, updateUrl = false) {
+    currentRepo = repo || currentRepo;
+    if (viewParam) currentViewParam = viewParam;
+    const targetBasemap = basemapKey || VIEW_TO_BASEMAP[currentViewParam] || 'topo';
 
-    loadCSV(filePath)
+    setBasemapUIAndLayer(targetBasemap, false);
+    if (updateUrl) {
+        updateUrlState(currentRepo, currentViewParam, false);
+    }
+
+    loadProjectConfig(currentRepo)
+        .then(config => {
+            console.log(`Loaded project config for '${currentRepo}':`, config);
+            currentProjectHeader = config.header || '';
+            const mapHeader = document.getElementById('map-header');
+            if (mapHeader && currentProjectHeader) {
+                mapHeader.textContent = currentProjectHeader;
+            }
+
+            // Setup single active project geology and extract dynamic legend directly from data source
+            setProjectGeology(map, baseMapLayers, config, (legendItems) => {
+                updateGeologyLegend(legendItems);
+            });
+
+            return loadCSV(config.dataFile);
+        })
         .then(data => {
-            console.log(`Successfully loaded URL repo '${currentRepo}': ${filePath}`);
+            console.log(`Successfully loaded data for '${currentRepo}'`);
             processData(data);
         })
-        .catch((err) => {
-            console.warn(`Failed to load ${filePath}, attempting default fallback:`, err);
-            loadCSV('data/timna_valley.csv')
-                .then(data => processData(data))
-                .catch(e => console.error('Fallback CSV load error:', e));
+        .catch(err => {
+            console.error(`Failed to load project '${currentRepo}':`, err);
         });
+}
+
+function loadInitialRepoFromURL() {
+    const { repo, viewParam, basemapKey } = parseAppUrl();
+    loadProject(repo, viewParam, basemapKey, false);
 }
 loadInitialRepoFromURL();
 
 // Listen for browser Back/Forward navigation
 window.addEventListener('popstate', () => {
-    const { repo, viewParam, basemapKey, filePath } = parseAppUrl();
+    const { repo, viewParam, basemapKey } = parseAppUrl();
     const repoChanged = (repo !== currentRepo);
     const viewChanged = (viewParam !== currentViewParam);
 
-    currentRepo = repo;
-    currentViewParam = viewParam;
-
-    if (viewChanged) {
-        setBasemapUIAndLayer(basemapKey, false);
-    }
     if (repoChanged) {
-        loadCSV(filePath)
-            .then(data => processData(data))
-            .catch(err => console.error('Popstate load error:', err));
+        loadProject(repo, viewParam, basemapKey, false);
+    } else if (viewChanged) {
+        currentViewParam = viewParam;
+        setBasemapUIAndLayer(basemapKey, false);
     }
 });
 
@@ -191,21 +237,20 @@ if (openBtn && openDropdown) {
                             ev.stopPropagation();
                             openDropdown.style.display = 'none';
                             
-                            // Load the selected CSV from the server's data directory
-                            const filePath = `data/${fileName}`;
-                            const matchedRepo = FILE_TO_REPO[fileName.toLowerCase()] || FILE_TO_REPO[filePath.toLowerCase()];
+                            // Load the selected project from the server's data directory
+                            const matchedRepo = FILE_TO_REPO[fileName.toLowerCase()] || FILE_TO_REPO[`data/${fileName.toLowerCase()}`];
                             if (matchedRepo) {
-                                currentRepo = matchedRepo;
-                                updateUrlState(currentRepo, currentViewParam, false);
+                                loadProject(matchedRepo, currentViewParam, null, true);
+                            } else {
+                                const filePath = `data/${fileName}`;
+                                loadCSV(filePath)
+                                    .then(data => {
+                                        processData(data);
+                                    })
+                                    .catch(err => {
+                                        alert(`Error loading file: ${err.message}`);
+                                    });
                             }
-                            loadCSV(filePath)
-                                .then(data => {
-                                    console.log(`Successfully loaded selected server CSV: ${filePath}`);
-                                    processData(data);
-                                })
-                                .catch(err => {
-                                    alert(`Error loading file: ${err.message}`);
-                                });
                         });
                         
                         openDropdown.appendChild(item);
@@ -218,8 +263,10 @@ if (openBtn && openDropdown) {
     });
 
     // Close open dropdown when clicking outside
-    document.addEventListener('click', () => {
-        openDropdown.style.display = 'none';
+    document.addEventListener('click', (e) => {
+        if (!openDropdown.contains(e.target) && e.target !== openBtn) {
+            openDropdown.style.display = 'none';
+        }
     });
 }
 
@@ -238,7 +285,11 @@ fileInput.addEventListener('change', (event) => {
     }
 });
 
+// Global variable to keep track of current highlighted row in the sidebar
+let currentHighlightedRow = null;
 
+// Map to store current site markers by location name
+const currentMarkers = new Map();
 
 /**
  * Updates the map header text content based on loaded survey properties.
@@ -247,6 +298,11 @@ fileInput.addEventListener('change', (event) => {
 function updateMapHeaderTitle(locationsList) {
     const mapHeader = document.getElementById('map-header');
     if (!mapHeader) return;
+
+    if (currentProjectHeader) {
+        mapHeader.textContent = currentProjectHeader;
+        return;
+    }
 
     const headerLoc = locationsList.find(l => l['location name'] && l['location name'].toLowerCase().trim() === 'header');
     if (headerLoc) {
@@ -442,7 +498,9 @@ legend.onAdd = function (map) {
     div.style.backdropFilter = 'blur(8px)';
     div.style.fontSize = '12px';
     div.style.fontFamily = 'Inter, sans-serif';
-    div.style.maxHeight = '320px';
+    const initialUrlState = parseAppUrl();
+    const isInitialGeo = (initialUrlState.basemapKey === 'geologic');
+    div.style.maxHeight = isInitialGeo ? '520px' : '320px';
     div.style.overflowY = 'auto';
     div.style.pointerEvents = 'auto'; // allow scrolling legend
     div.style.width = '320px'; // Fixed width to neatly accommodate 2 columns
@@ -490,17 +548,7 @@ legend.onAdd = function (map) {
     legendHtml += `</div>
         <div id="geology-legend-section" class="geology-legend-section" style="display: none; margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.15); padding-top: 8px;">
             <h5 style="margin: 0 0 6px 0; font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;">Geology Units</h5>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 8px; font-size: 11px;">
-                <div style="display: flex; align-items: center; gap: 6px;" title="Precambrian Granites & Basement"><span style="width: 14px; height: 14px; background: #D93636; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Precambrian Granite</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Timna & Amudei Shelomo Formations"><span style="width: 14px; height: 14px; background: #FF6C0A; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Timna Formation</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Burj Formation & Um Ishrin Sandstone"><span style="width: 14px; height: 14px; background: #C27555; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Burj & Um Ishrin</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Amir Formation (Lower Cretaceous)"><span style="width: 14px; height: 14px; background: #A8C978; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Amir Formation</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Evrona / Avrona Formation"><span style="width: 14px; height: 14px; background: #9BBEC0; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Evrona Formation</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Kurnub Group Sandstone"><span style="width: 14px; height: 14px; background: #B0903F; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Kurnub Sandstone</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Cretaceous Limestone & Chalk"><span style="width: 14px; height: 14px; background: #8FF04F; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Cretaceous Limestone</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Tertiary Formations"><span style="width: 14px; height: 14px; background: #FFF500; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Tertiary Formations</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Quaternary Basalt"><span style="width: 14px; height: 14px; background: #334155; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Quaternary Basalt</span></div>
-                <div style="display: flex; align-items: center; gap: 6px;" title="Quaternary Alluvium & Sand"><span style="width: 14px; height: 14px; background: #FFFFB6; border-radius: 3px; border: 1px solid rgba(0,0,0,0.3); flex-shrink: 0;"></span><span>Quaternary Alluvium</span></div>
+            <div class="geology-legend-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 8px; font-size: 11px;">
             </div>
         </div>
     `;
@@ -530,7 +578,7 @@ legend.onAdd = function (map) {
             iconMax.style.display = 'none';
             div.style.width = '320px';
             const isGeologic = document.querySelector('.basemap-btn[data-basemap="geologic"]')?.classList.contains('active');
-            div.style.maxHeight = isGeologic ? '480px' : '320px';
+            div.style.maxHeight = isGeologic ? '520px' : '320px';
             div.style.overflowY = 'auto';
             div.style.padding = '12px 16px';
         }

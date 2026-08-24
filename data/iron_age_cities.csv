@@ -1,5 +1,4 @@
 location name,latitude,longitude,start year,end time,title,description
-header,,,,,,Iron Age Cities of Israel & Judah
 שכם, 32.213, 35.282, -1100 , -1000, s1, s2
 מגידו,32.586, 35.184, -1100, -1000, m1, m2
 מגידו,32.586, 35.184, -900, -800, m3, m4

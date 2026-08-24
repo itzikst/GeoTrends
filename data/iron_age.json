@@ -1,0 +1,7 @@
+{
+  "repo": "iron_age",
+  "dataFile": "data/iron_age_cities.csv",
+  "header": "שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל",
+  "geologyType": "external",
+  "geologyData": "https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer"
+}

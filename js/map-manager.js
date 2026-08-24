@@ -171,74 +171,18 @@ export function initMap(domId, esriApiKey) {
         className: 'hillshade-layer'
     });
 
-    // GSI 1:50,000 High-Detail Official Map (494 detailed formation layers covering Timna & Israel)
-    // We fetch root.json and pass modified style (stripping maxzoom) into options.style so MapLibre GL stretches tiles up to zoom 24
-    const gsiGeology50k = L.layerGroup();
-    const gsiVectorUrl = 'https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer';
+    // Dynamic overlay container for active project's geology (single geology layer per project)
+    const activeGeologyOverlay = L.layerGroup();
+    const geologicGroup = L.layerGroup([geologicVoyager, geologicHillshade, activeGeologyOverlay]);
 
-    try {
-        const createLayer = (L.esri && L.esri.Vector && typeof L.esri.Vector.vectorTileLayer === 'function')
-            ? L.esri.Vector.vectorTileLayer
-            : (L.esri && typeof L.esri.vectorTileLayer === 'function' ? L.esri.vectorTileLayer : null);
+    const baseMapLayers = {
+        topo: topoGroup,
+        satellite: satelliteGroup,
+        geologic: geologicGroup
+    };
 
-        if (createLayer) {
-            const vectorLayer = createLayer(gsiVectorUrl, {
-                opacity: 0.8,
-                style: function (style) {
-                    if (style) {
-                        style.sprite = `${gsiVectorUrl}/resources/sprites/sprite`;
-                        style.glyphs = `${gsiVectorUrl}/resources/fonts/{fontstack}/{range}.pbf`;
-                        if (style.sources && style.sources.esri) {
-                            style.sources.esri.bounds = [34.2642, 29.5044, 35.9622, 33.3407];
-                        }
-                        if (style.layers) {
-                            // Filter out KeyMap sheet grid lines and sheet grid labels
-                            style.layers = style.layers.filter(l => !l.id.toLowerCase().includes('keymap'));
-                            style.layers.forEach(l => {
-                                delete l.minzoom;
-                                delete l.maxzoom;
-                            });
-                        }
-                    }
-                    return style;
-                },
-                attribution: 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>'
-            });
-            if (vectorLayer) {
-                // Safeguard against esri-leaflet-vector 4.2.3 onRemove crash with nested LayerGroups
-                const origOnRemove = vectorLayer.onRemove;
-                vectorLayer.onRemove = function (mapInstance) {
-                    try {
-                        if (origOnRemove) {
-                            origOnRemove.call(this, mapInstance || this._map);
-                        }
-                    } catch (e) {
-                        console.warn('Suppressed vectorLayer onRemove error:', e);
-                    }
-                };
-                window._gsiVectorTileLayer = vectorLayer;
-                gsiGeology50k.addLayer(vectorLayer);
-            }
-        }
-    } catch (err) {
-        console.error('Failed to create GSI vector tile layer:', err);
-    }
-
-    // Dynamic zoom listener to hide GSI geology layer when zoomed out below zoom 10
-    map.on('zoomend', function () {
-        const activeBtn = document.querySelector('.basemap-btn.active');
-        if (activeBtn && activeBtn.getAttribute('data-basemap') === 'geologic') {
-            if (map.getZoom() < 10) {
-                if (map.hasLayer(gsiGeology50k)) {
-                    map.removeLayer(gsiGeology50k);
-                }
-            } else {
-                if (!map.hasLayer(gsiGeology50k)) {
-                    map.addLayer(gsiGeology50k);
-                }
-            }
-        }
-    });
+    const markerGroup = L.layerGroup().addTo(map);
+    const highlightLayer = L.layerGroup().addTo(map);
 
     // Map click listener for GSI Geology Vector Tile features in Timna / Israel
     map.on('click', function (e) {
@@ -261,8 +205,8 @@ export function initMap(domId, esriApiKey) {
 
         if (!glMap || typeof glMap.queryRenderedFeatures !== 'function') return;
 
-        // At low zoom levels (< 11), GSI tiles only send empty/macro region data without detailed formation info
-        if (map.getZoom() < 11) return;
+        // At low zoom levels (< 10), GSI tiles only send empty/macro region data without detailed formation info
+        if (map.getZoom() < 10) return;
 
         try {
             const point = glMap.project([e.latlng.lng, e.latlng.lat]);
@@ -271,7 +215,9 @@ export function initMap(domId, esriApiKey) {
 
             if (!features || features.length === 0) return;
 
-            const geoFeat = features.find(f => f.layer && f.layer.id && (f.layer.id.startsWith('GeoFormation') || f.layer.id.startsWith('Geo_Formation'))) || features[0];
+            const geoFeat = features.find(f => f.layer && f.layer.id && (f.layer.id.startsWith('GeoFormation') || f.layer.id.startsWith('Geo_Formation'))) 
+                || features.find(f => f.layer && f.layer.id && !f.layer.id.toLowerCase().includes('keymap') && !f.layer.id.toLowerCase().includes('boundary'))
+                || features[0];
             if (!geoFeat || !geoFeat.layer || !geoFeat.layer.id) return;
 
             let layerId = geoFeat.layer.id;
@@ -280,7 +226,7 @@ export function initMap(domId, esriApiKey) {
             }
 
             // Skip showing popup if layer ID/name is missing, empty, or just generic region placeholder
-            if (!layerId || layerId.toLowerCase().includes('region') || layerId.toLowerCase().includes('boundary')) return;
+            if (!layerId || layerId.toLowerCase().includes('region') || layerId.toLowerCase().includes('boundary') || layerId.toLowerCase().includes('sheet')) return;
 
             let formattedName = layerId;
             if (layerId.includes(' - ')) {
@@ -302,70 +248,202 @@ export function initMap(domId, esriApiKey) {
         }
     });
 
-    // Helper for styling Jordan geological formations matching GSI official map colors
-    function getJordanGeologyColor(code) {
-        if (!code) return '#cbd5e1';
-        if (code.startsWith('pC'))  return '#D93636'; // Precambrian Granite / Basement (GSI #D93636)
-        if (code === 'Cs')          return '#C27555'; // Burj & Um Ishrin / Shehoret (GSI #C27555)
-        if (code.startsWith('Ks1')) return '#A8C978'; // Amir / Evrona / Kurnub (GSI #A8C978)
-        if (code.startsWith('Ks'))  return '#8FF04F'; // Cretaceous Limestone (GSI #8FF04F)
-        if (code.startsWith('K'))   return '#8FF04F'; // Cretaceous Limestone (GSI #8FF04F)
-        if (code.startsWith('O'))   return '#059669'; // Ordovician
-        if (code.startsWith('S'))   return '#0284c7'; // Silurian
-        if (code.startsWith('TR'))  return '#7c3aed'; // Triassic
-        if (code.startsWith('J'))   return '#2563eb'; // Jurassic
-        if (code.startsWith('T'))   return '#FFF500'; // Tertiary (GSI #FFF500)
-        if (code.startsWith('Qb'))  return '#334155'; // Quaternary Basalt
-        if (code.startsWith('Q') || code.startsWith('q')) return '#E5DE95'; // Quaternary Alluvium & Sand
-        return '#a8a29e';
+    return { map, markerGroup, highlightLayer, baseMapLayers, activeGeologyOverlay };
+}
+
+// Canonical color palette for Jordan formations
+export function getJordanGeologyColor(code) {
+    if (!code) return '#cbd5e1';
+    if (code.startsWith('pC'))  return '#D93636'; // Precambrian Granite / Basement
+    if (code === 'Cs')          return '#C27555'; // Burj & Um Ishrin / Shehoret
+    if (code.startsWith('Ks1')) return '#A8C978'; // Amir / Evrona / Kurnub
+    if (code.startsWith('Ks'))  return '#8FF04F'; // Cretaceous Limestone
+    if (code.startsWith('K'))   return '#8FF04F'; // Cretaceous Limestone
+    if (code.startsWith('O'))   return '#059669'; // Ordovician
+    if (code.startsWith('S'))   return '#0284c7'; // Silurian
+    if (code.startsWith('TR'))  return '#7c3aed'; // Triassic
+    if (code.startsWith('J'))   return '#2563eb'; // Jurassic
+    if (code.startsWith('T') || code.startsWith('Ts')) return '#FFF500'; // Tertiary
+    if (code.startsWith('Qb'))  return '#334155'; // Quaternary Basalt
+    if (code.startsWith('Q') || code.startsWith('q')) return '#E5DE95'; // Quaternary Alluvium & Sand
+    return '#a8a29e';
+}
+
+const JORDAN_CODE_LABELS = {
+    'pC': 'Precambrian Granite',
+    'Cs': 'Burj & Um Ishrin',
+    'Ks1': 'Amir & Kurnub Sandstone',
+    'Ks': 'Cretaceous Limestone',
+    'K': 'Cretaceous Formations',
+    'O': 'Ordovician Formations',
+    'S': 'Silurian Formations',
+    'TR': 'Triassic Formations',
+    'J': 'Jurassic Formations',
+    'T': 'Tertiary Formations',
+    'Qb': 'Quaternary Basalt',
+    'Q': 'Quaternary Alluvium'
+};
+
+const GSI_DEFAULT_LEGEND = [
+    { label: 'Precambrian Granite', color: '#D93636' },
+    { label: 'Timna Formation', color: '#FF6C0A' },
+    { label: 'Burj & Um Ishrin', color: '#C27555' },
+    { label: 'Amir Formation', color: '#A8C978' },
+    { label: 'Evrona Formation', color: '#9BBEC0' },
+    { label: 'Kurnub Sandstone', color: '#B0903F' },
+    { label: 'Cretaceous Limestone', color: '#8FF04F' },
+    { label: 'Tertiary Formations', color: '#FFF500' },
+    { label: 'Quaternary Basalt', color: '#334155' },
+    { label: 'Quaternary Alluvium', color: '#E5DE95' }
+];
+
+/**
+ * Dynamically configures the geology overlay and extracts geology legend units for the active project.
+ * @param {L.Map} map
+ * @param {Object} baseMapLayers
+ * @param {Object} projectConfig { geologyType, geologyData }
+ * @param {Function} onLegendReady Callback receiving Array<{ label: string, color: string }>
+ */
+export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendReady) {
+    const geologicGroup = baseMapLayers?.geologic;
+    if (!geologicGroup) return;
+
+    // Clear previous dynamic geology layers
+    const layers = geologicGroup.getLayers();
+    // Keep geologicVoyager (idx 0) and geologicHillshade (idx 1), remove any previous overlays (idx 2+)
+    for (let i = 2; i < layers.length; i++) {
+        try {
+            geologicGroup.removeLayer(layers[i]);
+        } catch (e) {
+            console.warn('Notice removing previous geology layer:', e);
+        }
     }
 
-    // High-Resolution Jordan Geology GeoJSON Layer (1,455 high-detail geological polygons covering Faynan & Jordan)
-    const jordanGeologyLayer = L.layerGroup();
-    fetch('data/jordan_geology.geojson')
-        .then(res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            return res.json();
-        })
-        .then(geoJsonData => {
-            const geoLayer = L.geoJSON(geoJsonData, {
-                style: function (feature) {
-                    const code = feature.properties ? feature.properties.Codierung : '';
-                    return {
-                        fillColor: getJordanGeologyColor(code),
-                        fillOpacity: 0.65,
-                        color: '#475569',
-                        weight: 1
-                    };
-                },
-                onEachFeature: function (feature, layer) {
-                    if (feature.properties && feature.properties.Codierung) {
-                        const code = feature.properties.Codierung;
-                        let desc = code;
-                        if (code === 'Cs') desc = 'Burj Formation & Sandstone (DSL Ore Bed, Salib & Um Ishrin)';
-                        else if (code.startsWith('pC')) desc = 'Precambrian Basement / Granites';
-                        else if (code.startsWith('K')) desc = 'Amir, Evrona & Kurnub Formations (Cretaceous)';
-                        else if (code.startsWith('Q') || code.startsWith('q')) desc = 'Quaternary Alluvium & Sediments';
-                        layer.bindPopup(`<strong>Geological Formation (${code}):</strong><br/><em>${desc}</em>`);
-                    }
+    if (!projectConfig || !projectConfig.geologyType || projectConfig.geologyType === 'none') {
+        if (typeof onLegendReady === 'function') onLegendReady([]);
+        return;
+    }
+
+    if (projectConfig.geologyType === 'geojson') {
+        fetch(projectConfig.geologyData)
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(geoJsonData => {
+                // Dynamically scan features to extract unique geology units
+                const presentCodes = new Set();
+                if (geoJsonData.features && Array.isArray(geoJsonData.features)) {
+                    geoJsonData.features.forEach(f => {
+                        const code = f.properties ? f.properties.Codierung : '';
+                        if (code) {
+                            // Group sub-codes to base prefix (e.g. Qs2 -> Q, pC1 -> pC)
+                            let baseKey = code;
+                            if (code.startsWith('pC')) baseKey = 'pC';
+                            else if (code.startsWith('Ks1')) baseKey = 'Ks1';
+                            else if (code.startsWith('Ks') || code.startsWith('K')) baseKey = 'Ks';
+                            else if (code.startsWith('Ts') || code.startsWith('T')) baseKey = 'T';
+                            else if (code.startsWith('Qs') || code.startsWith('Q') || code.startsWith('q')) baseKey = 'Q';
+                            else if (code.startsWith('Qb')) baseKey = 'Qb';
+                            presentCodes.add(baseKey);
+                        }
+                    });
                 }
+
+                // Generate dynamic legend items directly from data source
+                const legendItems = [];
+                presentCodes.forEach(code => {
+                    const label = JORDAN_CODE_LABELS[code] || code;
+                    const color = getJordanGeologyColor(code);
+                    legendItems.push({ label, color });
+                });
+
+                if (typeof onLegendReady === 'function') {
+                    onLegendReady(legendItems);
+                }
+
+                const geoLayer = L.geoJSON(geoJsonData, {
+                    style: function (feature) {
+                        const code = feature.properties ? feature.properties.Codierung : '';
+                        return {
+                            fillColor: getJordanGeologyColor(code),
+                            fillOpacity: 0.65,
+                            color: '#475569',
+                            weight: 1
+                        };
+                    },
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties && feature.properties.Codierung) {
+                            const code = feature.properties.Codierung;
+                            let desc = code;
+                            if (code === 'Cs') desc = 'Burj Formation & Sandstone (DSL Ore Bed, Salib & Um Ishrin)';
+                            else if (code.startsWith('pC')) desc = 'Precambrian Basement / Granites';
+                            else if (code.startsWith('K')) desc = 'Amir, Evrona & Kurnub Formations (Cretaceous)';
+                            else if (code.startsWith('Q') || code.startsWith('q')) desc = 'Quaternary Alluvium & Sediments';
+                            layer.bindPopup(`<strong>Geological Formation (${code}):</strong><br/><em>${desc}</em>`);
+                        }
+                    }
+                });
+
+                geologicGroup.addLayer(geoLayer);
+            })
+            .catch(err => {
+                console.error(`Failed to load GeoJSON from ${projectConfig.geologyData}:`, err);
+                if (typeof onLegendReady === 'function') onLegendReady([]);
             });
-            jordanGeologyLayer.addLayer(geoLayer);
-        })
-        .catch(err => console.error('Failed to load Jordan geology GeoJSON:', err));
+    } else if (projectConfig.geologyType === 'external') {
+        const createLayer = (L.esri && L.esri.Vector && typeof L.esri.Vector.vectorTileLayer === 'function')
+            ? L.esri.Vector.vectorTileLayer
+            : (L.esri && typeof L.esri.vectorTileLayer === 'function' ? L.esri.vectorTileLayer : null);
 
-    const geologicGroup = L.layerGroup([geologicVoyager, geologicHillshade, jordanGeologyLayer, gsiGeology50k]);
+        if (createLayer) {
+            try {
+                const vectorLayer = createLayer(projectConfig.geologyData, {
+                    opacity: 0.8,
+                    style: function (style) {
+                        if (style) {
+                            style.sprite = `${projectConfig.geologyData}/resources/sprites/sprite`;
+                            style.glyphs = `${projectConfig.geologyData}/resources/fonts/{fontstack}/{range}.pbf`;
+                            if (style.sources && style.sources.esri) {
+                                style.sources.esri.bounds = [34.2642, 29.5044, 35.9622, 33.3407];
+                            }
+                            if (style.layers) {
+                                style.layers = style.layers.filter(l => !l.id.toLowerCase().includes('keymap'));
+                                style.layers.forEach(l => {
+                                    delete l.minzoom;
+                                    delete l.maxzoom;
+                                });
+                            }
+                        }
+                        return style;
+                    },
+                    attribution: 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>'
+                });
 
-    const baseMapLayers = {
-        topo: topoGroup,
-        satellite: satelliteGroup,
-        geologic: geologicGroup
-    };
+                if (vectorLayer) {
+                    const origOnRemove = vectorLayer.onRemove;
+                    vectorLayer.onRemove = function (mapInstance) {
+                        try {
+                            if (origOnRemove) {
+                                origOnRemove.call(this, mapInstance || this._map);
+                            }
+                        } catch (e) {
+                            console.warn('Suppressed vectorLayer onRemove error:', e);
+                        }
+                    };
+                    window._gsiVectorTileLayer = vectorLayer;
+                    geologicGroup.addLayer(vectorLayer);
+                }
 
-    const markerGroup = L.layerGroup().addTo(map);
-    const highlightLayer = L.layerGroup().addTo(map);
-
-    return { map, markerGroup, highlightLayer, baseMapLayers };
+                if (typeof onLegendReady === 'function') {
+                    onLegendReady(GSI_DEFAULT_LEGEND);
+                }
+            } catch (err) {
+                console.error(`Failed to create external vector layer from ${projectConfig.geologyData}:`, err);
+                if (typeof onLegendReady === 'function') onLegendReady([]);
+            }
+        }
+    }
 }
 
 /**

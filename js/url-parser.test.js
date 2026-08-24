@@ -71,6 +71,8 @@ describe('URL Parser Module', () => {
             expect(parsed.viewParam).toBe('topo');
             expect(parsed.basemapKey).toBe('topo');
             expect(parsed.filePath).toBe('data/timna_valley.csv');
+            expect(parsed.filePath).toBe('data/timna_valley.csv');
+            expect(parsed.configPath).toBe('data/timna.json');
         });
 
         it('parses /faynan route', () => {
@@ -79,6 +81,7 @@ describe('URL Parser Module', () => {
             expect(parsed.viewParam).toBe('topo');
             expect(parsed.basemapKey).toBe('topo');
             expect(parsed.filePath).toBe('data/faynan_data.csv');
+            expect(parsed.configPath).toBe('data/faynan.json');
         });
 
         it('parses /iron_age route with view=geologic', () => {
@@ -87,6 +90,7 @@ describe('URL Parser Module', () => {
             expect(parsed.viewParam).toBe('geologic');
             expect(parsed.basemapKey).toBe('geologic');
             expect(parsed.filePath).toBe('data/iron_age_cities.csv');
+            expect(parsed.configPath).toBe('data/iron_age.json');
         });
 
         it('parses /faynan?view=satellite', () => {
@@ -95,6 +99,7 @@ describe('URL Parser Module', () => {
             expect(parsed.viewParam).toBe('satellite');
             expect(parsed.basemapKey).toBe('satellite');
             expect(parsed.filePath).toBe('data/faynan_data.csv');
+            expect(parsed.configPath).toBe('data/faynan.json');
         });
 
         it('handles view alias ?view=geo', () => {
@@ -103,6 +108,7 @@ describe('URL Parser Module', () => {
             expect(parsed.viewParam).toBe('geologic');
             expect(parsed.basemapKey).toBe('geologic');
             expect(parsed.filePath).toBe('data/timna_valley.csv');
+            expect(parsed.configPath).toBe('data/timna.json');
         });
     });
 
@@ -115,10 +121,13 @@ describe('URL Parser Module', () => {
     });
 
     describe('FILE_TO_REPO mapping', () => {
-        it('correctly maps CSV filenames to repos', () => {
+        it('correctly maps CSV and JSON filenames to repos', () => {
             expect(FILE_TO_REPO['timna_valley.csv']).toBe('timna');
             expect(FILE_TO_REPO['faynan_data.csv']).toBe('faynan');
             expect(FILE_TO_REPO['iron_age_cities.csv']).toBe('iron_age');
+            expect(FILE_TO_REPO['timna.json']).toBe('timna');
+            expect(FILE_TO_REPO['faynan.json']).toBe('faynan');
+            expect(FILE_TO_REPO['iron_age.json']).toBe('iron_age');
         });
     });
 });

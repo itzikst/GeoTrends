@@ -16,13 +16,29 @@ export const REPO_TO_FILE = {
     'iron_age_cities': 'data/iron_age_cities.csv'
 };
 
+export const REPO_TO_CONFIG = {
+    'timna': 'data/timna.json',
+    'faynan': 'data/faynan.json',
+    'iron_age': 'data/iron_age.json',
+    // Aliases
+    'iron-age': 'data/iron_age.json',
+    'ironage': 'data/iron_age.json',
+    'iron_age_cities': 'data/iron_age.json'
+};
+
 export const FILE_TO_REPO = {
     'timna_valley.csv': 'timna',
     'data/timna_valley.csv': 'timna',
+    'timna.json': 'timna',
+    'data/timna.json': 'timna',
     'faynan_data.csv': 'faynan',
     'data/faynan_data.csv': 'faynan',
+    'faynan.json': 'faynan',
+    'data/faynan.json': 'faynan',
     'iron_age_cities.csv': 'iron_age',
-    'data/iron_age_cities.csv': 'iron_age'
+    'data/iron_age_cities.csv': 'iron_age',
+    'iron_age.json': 'iron_age',
+    'data/iron_age.json': 'iron_age'
 };
 
 export const VIEW_TO_BASEMAP = {
@@ -116,12 +132,14 @@ export function parseAppUrl(urlString) {
     const viewParam = normalizeView(rawView);
     const basemapKey = VIEW_TO_BASEMAP[viewParam] || 'topo';
     const filePath = REPO_TO_FILE[repo] || REPO_TO_FILE[DEFAULT_REPO];
+    const configPath = REPO_TO_CONFIG[repo] || REPO_TO_CONFIG[DEFAULT_REPO];
 
     return {
         repo,
         viewParam,
         basemapKey,
-        filePath
+        filePath,
+        configPath
     };
 }
 
