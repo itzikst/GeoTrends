@@ -40,6 +40,12 @@ test.describe('Geology View & Project Config E2E Tests', () => {
         expect(center.lat).toBeGreaterThan(29.0);
         expect(center.lat).toBeLessThan(30.5);
 
+        // Verify high-contrast-markers class is active in geologic view
+        const hasHighContrast = await page.evaluate(() => {
+            return document.getElementById('map')?.classList.contains('high-contrast-markers');
+        });
+        expect(hasHighContrast).toBe(true);
+
         // Verify tile layers and markers exist on map
         const layerStats = await page.evaluate(() => {
             return {
@@ -130,6 +136,26 @@ test.describe('Geology View & Project Config E2E Tests', () => {
             return document.querySelectorAll('.leaflet-marker-pane img').length;
         });
         expect(markerCount).toBeGreaterThan(0);
+    });
+
+    test('Open Project dropdown displays project headers from JSON configs', async ({ page }) => {
+        await page.goto('http://localhost:8080/timna', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#open-btn', { timeout: 10000 });
+
+        // Click Open Project button to open the dropdown
+        await page.click('#open-btn');
+        await page.waitForFunction(() => {
+            const items = document.querySelectorAll('#open-dropdown .dropdown-item');
+            return items.length > 0 && !items[0].textContent.includes('Loading');
+        }, { timeout: 5000 });
+
+        const itemTexts = await page.evaluate(() => {
+            return Array.from(document.querySelectorAll('#open-dropdown .dropdown-item')).map(el => el.textContent.trim());
+        });
+
+        expect(itemTexts).toContain('Timna Valley Archaeological Sites & Features');
+        expect(itemTexts).toContain('Faynan Archaeological District Mining & Metallurgy');
+        expect(itemTexts).toContain('שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל');
     });
 
 });

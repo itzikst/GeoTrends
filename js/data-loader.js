@@ -51,6 +51,27 @@ export function loadCSV(filePath) {
 }
 
 /**
+ * Fetches the list of available projects with headers from the JSON configs.
+ * @returns {Promise<Array<{repo: string, header: string, dataFile?: string}>>}
+ */
+export function fetchProjectsList() {
+    return fetch(`data/projects.json?v=${Date.now()}`)
+        .then(response => {
+            if (!response.ok) throw new Error('Failed to load projects list');
+            return response.json();
+        })
+        .catch(err => {
+            console.warn('Fallback loading projects individually:', err);
+            const repos = ['timna', 'faynan', 'iron_age'];
+            return Promise.all(repos.map(r =>
+                loadProjectConfig(r)
+                    .then(cfg => ({ repo: cfg.repo || r, header: cfg.header || r, dataFile: cfg.dataFile }))
+                    .catch(() => ({ repo: r, header: r }))
+            ));
+        });
+}
+
+/**
  * Fetches the list of CSV files available on the server.
  * @returns {Promise<Array<string>>}
  */

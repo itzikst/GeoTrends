@@ -1,0 +1,20 @@
+[
+  {
+    "repo": "faynan",
+    "header": "Faynan Archaeological District Mining & Metallurgy",
+    "dataFile": "data/faynan_data.csv",
+    "configFile": "data/faynan.json"
+  },
+  {
+    "repo": "iron_age",
+    "header": "שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל",
+    "dataFile": "data/iron_age_cities.csv",
+    "configFile": "data/iron_age.json"
+  },
+  {
+    "repo": "timna",
+    "header": "Timna Valley Archaeological Sites & Features",
+    "dataFile": "data/timna_valley.csv",
+    "configFile": "data/timna.json"
+  }
+]

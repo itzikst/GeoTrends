@@ -96,4 +96,49 @@ describe('GeoTrends - Data Loader Unit Tests', () => {
             expect(determineYearBounds(null)).toEqual({ minYear: 0, maxYear: 0, eventYears: [] });
         });
     });
+
+    describe('fetchProjectsList() and loadProjectConfig()', () => {
+        it('should fetch and parse project config JSON correctly', async () => {
+            const { loadProjectConfig } = await import('./data-loader.js');
+            // Mock fetch
+            global.fetch = async (url) => {
+                if (url.includes('timna.json')) {
+                    return {
+                        ok: true,
+                        json: async () => ({
+                            repo: 'timna',
+                            header: 'Timna Valley Archaeological Sites & Features',
+                            dataFile: 'data/timna_valley.csv'
+                        })
+                    };
+                }
+                return { ok: false, status: 404 };
+            };
+
+            const config = await loadProjectConfig('timna');
+            expect(config.repo).toBe('timna');
+            expect(config.header).toBe('Timna Valley Archaeological Sites & Features');
+        });
+
+        it('should fetch projects list with headers from JSON', async () => {
+            const { fetchProjectsList } = await import('./data-loader.js');
+            global.fetch = async (url) => {
+                if (url.includes('projects.json')) {
+                    return {
+                        ok: true,
+                        json: async () => [
+                            { repo: 'timna', header: 'Timna Valley Archaeological Sites & Features' },
+                            { repo: 'faynan', header: 'Faynan Archaeological District Mining & Metallurgy' }
+                        ]
+                    };
+                }
+                return { ok: false };
+            };
+
+            const list = await fetchProjectsList();
+            expect(list).toHaveLength(2);
+            expect(list[0].header).toBe('Timna Valley Archaeological Sites & Features');
+            expect(list[1].header).toBe('Faynan Archaeological District Mining & Metallurgy');
+        });
+    });
 });

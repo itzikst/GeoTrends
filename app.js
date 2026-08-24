@@ -1,5 +1,5 @@
 import { formatYearLabel, makeLinksClickable } from './js/utils.js';
-import { loadCSV, loadProjectConfig, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
+import { loadCSV, loadProjectConfig, fetchProjectsList, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
 import { initMap, switchBaseMap, setProjectGeology, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
 import { parseAppUrl, updateUrlState, BASEMAP_TO_VIEW, VIEW_TO_BASEMAP, FILE_TO_REPO } from './js/url-parser.js';
 
@@ -125,6 +125,16 @@ function setBasemapUIAndLayer(basemapKey, updateUrl = true) {
         }
     }
 
+    // Toggle high-contrast halo on marker icons for satellite & geologic views
+    const mapContainer = map.getContainer();
+    if (mapContainer) {
+        if (basemapKey === 'satellite' || basemapKey === 'geologic') {
+            mapContainer.classList.add('high-contrast-markers');
+        } else {
+            mapContainer.classList.remove('high-contrast-markers');
+        }
+    }
+
     currentViewParam = BASEMAP_TO_VIEW[basemapKey] || 'topo';
     if (updateUrl) {
         updateUrlState(currentRepo, currentViewParam, false);
@@ -204,7 +214,7 @@ window.addEventListener('popstate', () => {
     }
 });
 
-// 2b. Open Server File Dropdown Logic
+// 2b. Open Project Dropdown Logic
 const openBtn = document.getElementById('open-btn');
 const openDropdown = document.getElementById('open-dropdown');
 
@@ -217,40 +227,26 @@ if (openBtn && openDropdown) {
             openDropdown.style.display = 'none';
         } else {
             openDropdown.style.display = 'flex';
-            openDropdown.innerHTML = '<div class="dropdown-item" style="color: #475569; cursor: default;">Loading server files...</div>';
+            openDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; cursor: default;">Loading projects...</div>';
             
-            fetchServerFileList()
-                .then(files => {
+            fetchProjectsList()
+                .then(projects => {
                     openDropdown.innerHTML = '';
-                    if (files.length === 0) {
-                        openDropdown.innerHTML = '<div class="dropdown-item" style="color: #475569; cursor: default;">No CSV files found</div>';
+                    if (!projects || projects.length === 0) {
+                        openDropdown.innerHTML = '<div class="dropdown-item" style="color: #94a3b8; cursor: default;">No projects found</div>';
                         return;
                     }
                     
-                    files.forEach(fileName => {
+                    projects.forEach(proj => {
                         const item = document.createElement('div');
                         item.className = 'dropdown-item';
-                        item.textContent = fileName;
-                        item.title = `Click to load data/${fileName}`;
+                        item.textContent = proj.header || proj.repo;
+                        item.title = `Open ${proj.header || proj.repo} (${proj.repo})`;
                         
                         item.addEventListener('click', (ev) => {
                             ev.stopPropagation();
                             openDropdown.style.display = 'none';
-                            
-                            // Load the selected project from the server's data directory
-                            const matchedRepo = FILE_TO_REPO[fileName.toLowerCase()] || FILE_TO_REPO[`data/${fileName.toLowerCase()}`];
-                            if (matchedRepo) {
-                                loadProject(matchedRepo, currentViewParam, null, true);
-                            } else {
-                                const filePath = `data/${fileName}`;
-                                loadCSV(filePath)
-                                    .then(data => {
-                                        processData(data);
-                                    })
-                                    .catch(err => {
-                                        alert(`Error loading file: ${err.message}`);
-                                    });
-                            }
+                            loadProject(proj.repo, currentViewParam, null, true);
                         });
                         
                         openDropdown.appendChild(item);
