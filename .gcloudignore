@@ -2,3 +2,9 @@
 .gitignore
 node_modules/
 server.js
+playwright-report/
+test-results/
+tests/
+*.test.js
+diagnose*.js
+check*.js

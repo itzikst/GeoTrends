@@ -6,6 +6,10 @@ handlers:
   static_files: index.html
   upload: index.html
 
-- url: /(.*)
-  static_files: \1
-  upload: (.*)
+- url: /(.*)\.(js|css|json|geojson|csv|png|jpg|svg|ico|txt|html)$
+  static_files: \1.\2
+  upload: (.*)\.(js|css|json|geojson|csv|png|jpg|svg|ico|txt|html)$
+
+- url: /.*
+  static_files: index.html
+  upload: index.html
