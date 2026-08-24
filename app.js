@@ -157,16 +157,20 @@ if (basemapSelector) {
 uploadBtn.addEventListener('click', () => fileInput.click());
 
 let currentProjectHeader = '';
+let initialTargetYear = null;
 
-// Load project according to URL repo and view parameters scheme app-url/repo?view=topo|geo|sattelites
-function loadProject(repo, viewParam = null, basemapKey = null, updateUrl = false) {
+// Load project according to URL repo and view parameters scheme app-url/repo?view=topo|geo|sattelites&year=YYYY
+function loadProject(repo, viewParam = null, basemapKey = null, targetYear = null, updateUrl = false) {
     currentRepo = repo || currentRepo;
     if (viewParam) currentViewParam = viewParam;
+    if (targetYear !== null && targetYear !== undefined && !isNaN(targetYear)) {
+        initialTargetYear = targetYear;
+    }
     const targetBasemap = basemapKey || VIEW_TO_BASEMAP[currentViewParam] || 'topo';
 
     setBasemapUIAndLayer(targetBasemap, false);
     if (updateUrl) {
-        updateUrlState(currentRepo, currentViewParam, false);
+        updateUrlState(currentRepo, currentViewParam, targetYear, false);
     }
 
     loadProjectConfig(currentRepo)
@@ -195,22 +199,29 @@ function loadProject(repo, viewParam = null, basemapKey = null, updateUrl = fals
 }
 
 function loadInitialRepoFromURL() {
-    const { repo, viewParam, basemapKey } = parseAppUrl();
-    loadProject(repo, viewParam, basemapKey, false);
+    const { repo, viewParam, basemapKey, yearParam } = parseAppUrl();
+    loadProject(repo, viewParam, basemapKey, yearParam, false);
 }
 loadInitialRepoFromURL();
 
 // Listen for browser Back/Forward navigation
 window.addEventListener('popstate', () => {
-    const { repo, viewParam, basemapKey } = parseAppUrl();
+    const { repo, viewParam, basemapKey, yearParam } = parseAppUrl();
     const repoChanged = (repo !== currentRepo);
     const viewChanged = (viewParam !== currentViewParam);
 
     if (repoChanged) {
-        loadProject(repo, viewParam, basemapKey, false);
-    } else if (viewChanged) {
-        currentViewParam = viewParam;
-        setBasemapUIAndLayer(basemapKey, false);
+        loadProject(repo, viewParam, basemapKey, yearParam, false);
+    } else {
+        if (viewChanged) {
+            currentViewParam = viewParam;
+            setBasemapUIAndLayer(basemapKey, false);
+        }
+        if (yearParam !== null && yearParam !== undefined && !isNaN(yearParam)) {
+            pauseAnimation();
+            currentYear = Math.max(minYear, Math.min(maxYear, yearParam));
+            syncUI();
+        }
     }
 });
 
@@ -328,8 +339,12 @@ function updateMapHeaderTitle(locationsList) {
  * @param {number} minY 
  * @param {number} maxY 
  */
-function initializeTimelineControls(minY, maxY) {
-    currentYear = minY;
+function initializeTimelineControls(minY, maxY, targetYear = null) {
+    if (targetYear !== null && targetYear !== undefined && !isNaN(targetYear)) {
+        currentYear = Math.max(minY, Math.min(maxY, targetYear));
+    } else {
+        currentYear = minY;
+    }
     updateIndicator(currentYear);
     drawRulerMarkers(minY, maxY);
     drawPeriodBands(minY, maxY);
@@ -355,8 +370,8 @@ function processData(rawData) {
     maxYear = boundsObj.maxYear;
     eventYears = boundsObj.eventYears;
 
-    // 4. Draw timeline components
-    initializeTimelineControls(minYear, maxYear);
+    // 4. Draw timeline components & initialize target year
+    initializeTimelineControls(minYear, maxYear, initialTargetYear);
 
     // 5. Enable control buttons
     playPauseBtn.disabled = false;
@@ -366,7 +381,7 @@ function processData(rawData) {
 
     // 6. Reset table & markers
     dataTableBody.innerHTML = '';
-    updateMarkers(currentYear);
+    syncUI();
 
     // 7. Auto-pan/zoom map to fit all points
     const visibleLocations = locations.filter(loc => {

@@ -109,6 +109,27 @@ describe('URL Parser Module', () => {
             expect(parsed.basemapKey).toBe('geologic');
             expect(parsed.filePath).toBe('data/timna_valley.csv');
             expect(parsed.configPath).toBe('data/timna.json');
+            expect(parsed.yearParam).toBeNull();
+        });
+
+        it('parses ?year=-1200 query parameter', () => {
+            const parsed = parseAppUrl('http://localhost:8080/timna?year=-1200');
+            expect(parsed.repo).toBe('timna');
+            expect(parsed.viewParam).toBe('topo');
+            expect(parsed.yearParam).toBe(-1200);
+        });
+
+        it('parses ?view=geologic&year=-900 query parameter', () => {
+            const parsed = parseAppUrl('http://localhost:8080/faynan?view=geologic&year=-900');
+            expect(parsed.repo).toBe('faynan');
+            expect(parsed.viewParam).toBe('geologic');
+            expect(parsed.yearParam).toBe(-900);
+        });
+
+        it('parses BC/BCE suffix in ?year=1200BC', () => {
+            const parsed = parseAppUrl('http://localhost:8080/iron_age?year=1200BC');
+            expect(parsed.repo).toBe('iron_age');
+            expect(parsed.yearParam).toBe(-1200);
         });
     });
 
@@ -117,6 +138,11 @@ describe('URL Parser Module', () => {
             expect(buildAppUrl('timna', 'topo')).toBe('/timna?view=topo');
             expect(buildAppUrl('faynan', 'geologic')).toBe('/faynan?view=geologic');
             expect(buildAppUrl('iron-age', 'satellite')).toBe('/iron_age?view=satellite');
+        });
+
+        it('includes year parameter when provided', () => {
+            expect(buildAppUrl('timna', 'topo', -1200)).toBe('/timna?view=topo&year=-1200');
+            expect(buildAppUrl('faynan', 'geologic', -900)).toBe('/faynan?view=geologic&year=-900');
         });
     });
 

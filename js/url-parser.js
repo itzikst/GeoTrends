@@ -93,9 +93,28 @@ export function normalizeView(rawView) {
 }
 
 /**
+ * Normalizes and parses a year query parameter (supports negative numbers, BCE/BC suffix).
+ * @param {string|number} rawYear 
+ * @returns {number|null}
+ */
+export function parseYearParam(rawYear) {
+    if (rawYear === null || rawYear === undefined || rawYear === '') return null;
+    let str = String(rawYear).trim();
+    let isBC = false;
+    if (str.toUpperCase().includes('BC') || str.toUpperCase().includes('BCE')) {
+        isBC = true;
+        str = str.replace(/BC|BCE/gi, '').trim();
+    }
+    const parsed = parseInt(str, 10);
+    if (isNaN(parsed)) return null;
+    if (isBC && parsed > 0) return -parsed;
+    return parsed;
+}
+
+/**
  * Parses the current application URL or a given URL string.
  * @param {string} [urlString] 
- * @returns {{ repo: string, viewParam: string, basemapKey: string, filePath: string }}
+ * @returns {{ repo: string, viewParam: string, basemapKey: string, filePath: string, configPath: string, yearParam: number|null }}
  */
 export function parseAppUrl(urlString) {
     let pathname = '';
@@ -123,13 +142,16 @@ export function parseAppUrl(urlString) {
     const candidateRepo = (firstSegment.includes('.') || firstSegment === 'index.html') ? '' : firstSegment;
     const repo = normalizeRepo(candidateRepo);
 
-    // Extract query parameter 'view'
+    // Extract query parameters 'view' and 'year'
     let rawView = '';
+    let rawYear = null;
     if (search) {
         const params = new URLSearchParams(search);
         rawView = params.get('view') || '';
+        rawYear = params.get('year');
     }
     const viewParam = normalizeView(rawView);
+    const yearParam = parseYearParam(rawYear);
     const basemapKey = VIEW_TO_BASEMAP[viewParam] || 'topo';
     const filePath = REPO_TO_FILE[repo] || REPO_TO_FILE[DEFAULT_REPO];
     const configPath = REPO_TO_CONFIG[repo] || REPO_TO_CONFIG[DEFAULT_REPO];
@@ -139,34 +161,46 @@ export function parseAppUrl(urlString) {
         viewParam,
         basemapKey,
         filePath,
-        configPath
+        configPath,
+        yearParam
     };
 }
 
 /**
- * Builds a relative URL string from repo and view parameters.
+ * Builds a relative URL string from repo, view, and optional year parameters.
  * @param {string} repo 
  * @param {string} viewParam 
+ * @param {number|null} [yearParam=null]
  * @returns {string}
  */
-export function buildAppUrl(repo, viewParam) {
+export function buildAppUrl(repo, viewParam, yearParam = null) {
     const cleanRepo = normalizeRepo(repo);
     const cleanView = normalizeView(viewParam);
-    return `/${cleanRepo}?view=${cleanView}`;
+    let url = `/${cleanRepo}?view=${cleanView}`;
+    if (yearParam !== null && yearParam !== undefined && !isNaN(yearParam)) {
+        url += `&year=${yearParam}`;
+    }
+    return url;
 }
 
 /**
  * Updates browser history state and URL without page reload.
  * @param {string} repo 
  * @param {string} viewParam 
+ * @param {number|boolean|null} [yearParam=null] Optional year number or boolean for push
  * @param {boolean} [push=false] Whether to push state or replace state
  */
-export function updateUrlState(repo, viewParam, push = false) {
+export function updateUrlState(repo, viewParam, yearParam = null, push = false) {
     if (typeof window === 'undefined' || !window.history) return;
 
-    const newUrl = buildAppUrl(repo, viewParam);
+    if (typeof yearParam === 'boolean') {
+        push = yearParam;
+        yearParam = null;
+    }
+
+    const newUrl = buildAppUrl(repo, viewParam, yearParam);
     const currentState = window.history.state || {};
-    const stateData = { ...currentState, repo, view: viewParam };
+    const stateData = { ...currentState, repo, view: viewParam, year: yearParam };
 
     // Check if already at current URL
     const currentRelativeUrl = window.location.pathname + window.location.search;

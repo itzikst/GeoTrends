@@ -158,4 +158,34 @@ test.describe('Geology View & Project Config E2E Tests', () => {
         expect(itemTexts).toContain('שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל');
     });
 
+    test('Opening URL with ?year=-1200 initializes app at 1200 BC', async ({ page }) => {
+        await page.goto('http://localhost:8080/timna?year=-1200', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#current-year-value', { timeout: 10000 });
+        await page.waitForTimeout(1500);
+
+        // Verify year display shows 1200 BC
+        const yearDisplay = await page.textContent('#current-year-value');
+        expect(yearDisplay.trim()).toBe('1200 BC');
+
+        // Verify markers are rendered for this specific year
+        const markerCount = await page.evaluate(() => {
+            return document.querySelectorAll('.leaflet-marker-pane img').length;
+        });
+        expect(markerCount).toBeGreaterThan(0);
+    });
+
+    test('Opening URL with standard query string ?view=geologic&year=-1000 parses correctly', async ({ page }) => {
+        await page.goto('http://localhost:8080/faynan?view=geologic&year=-1000', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#current-year-value', { timeout: 10000 });
+        await page.waitForTimeout(1500);
+
+        // Verify year display shows 1000 BC
+        const yearDisplay = await page.textContent('#current-year-value');
+        expect(yearDisplay.trim()).toBe('1000 BC');
+
+        // Verify active basemap is geologic
+        const activeBasemap = await page.getAttribute('.basemap-btn.active', 'data-basemap');
+        expect(activeBasemap).toBe('geologic');
+    });
+
 });
