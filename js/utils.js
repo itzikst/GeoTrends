@@ -30,3 +30,18 @@ export function makeLinksClickable(text) {
         return `<a href="${href}" target="_blank" style="color: #2563eb; text-decoration: underline; font-weight: 600;">${url}</a>`;
     });
 }
+
+/**
+ * Computes the year corresponding to a progress percentage (0 to 1).
+ * Clamps result within [minYear, maxYear].
+ * @param {number} progress Normalized progress from 0 to 1
+ * @param {number} minYear 
+ * @param {number} maxYear 
+ * @returns {number}
+ */
+export function calculateYearFromProgress(progress, minYear, maxYear) {
+    if (isNaN(progress) || isNaN(minYear) || isNaN(maxYear)) return minYear || 0;
+    const clamped = Math.max(0, Math.min(1, progress));
+    return Math.round(minYear + clamped * (maxYear - minYear));
+}
+

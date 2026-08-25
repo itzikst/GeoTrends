@@ -1,7 +1,9 @@
 {
   "repo": "iron_age",
   "dataFile": "data/iron_age_cities.csv",
-  "header": "שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל",
-  "geologyType": "external",
-  "geologyData": "https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer"
+  "header": "Samaria and Jezreel Valley: Iron Age Urban centers",
+  "geologyType": "hybrid",
+  "lowResGeology": "data/israel_geology.geojson",
+  "highResGeology": "https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer",
+  "zoomThreshold": 11
 }

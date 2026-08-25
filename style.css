@@ -581,6 +581,9 @@ th {
     display: flex;
     align-items: flex-start;
     padding-top: 5px;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
 }
 
 #time-ruler {
@@ -589,6 +592,7 @@ th {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 5px;
     position: relative;
+    cursor: pointer;
 }
 
 #ruler-line {
@@ -598,6 +602,7 @@ th {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
+    pointer-events: none;
 }
 
 #ruler-markers {
@@ -627,6 +632,7 @@ th {
     color: var(--text-dim);
     white-space: nowrap;
     font-family: 'Outfit', sans-serif;
+    user-select: none;
 }
 
 #time-indicator {
@@ -663,6 +669,7 @@ th {
     left: 0;
     pointer-events: auto;
     /* allow hover */
+    cursor: pointer;
 }
 
 .ruler-period-band {
@@ -685,7 +692,8 @@ th {
     padding: 0 4px;
     box-sizing: border-box;
     transition: all 0.2s ease;
-    cursor: help;
+    cursor: pointer;
+    user-select: none;
 }
 
 .ruler-period-band:hover {

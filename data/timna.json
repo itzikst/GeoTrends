@@ -2,6 +2,8 @@
   "repo": "timna",
   "dataFile": "data/timna_valley.csv",
   "header": "Timna Valley Archaeological Sites & Features",
-  "geologyType": "external",
-  "geologyData": "https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer"
+  "geologyType": "hybrid",
+  "lowResGeology": "data/israel_geology.geojson",
+  "highResGeology": "https://egozi.gsi.gov.il/arcgis/rest/services/Hosted/All_A_ZDissolove_g1_2/VectorTileServer",
+  "zoomThreshold": 11
 }

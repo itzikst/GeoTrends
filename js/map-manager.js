@@ -297,16 +297,29 @@ const GSI_DEFAULT_LEGEND = [
     { label: 'Quaternary Alluvium', color: '#E5DE95' }
 ];
 
+// In-memory cache for loaded GeoJSON datasets
+const geoJsonCache = new Map();
+
 /**
  * Dynamically configures the geology overlay and extracts geology legend units for the active project.
+ * Supports:
+ * - 'geojson': Single GeoJSON file (e.g. Jordan geology in Faynan)
+ * - 'external': Single external VectorTileServer
+ * - 'hybrid': Low-zoom GeoJSON fallback with high-zoom VectorTileServer (e.g. Timna, Iron Age)
  * @param {L.Map} map
  * @param {Object} baseMapLayers
- * @param {Object} projectConfig { geologyType, geologyData }
+ * @param {Object} projectConfig { geologyType, geologyData, lowResGeology, highResGeology, zoomThreshold, legend, attribution }
  * @param {Function} onLegendReady Callback receiving Array<{ label: string, color: string }>
  */
 export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendReady) {
     const geologicGroup = baseMapLayers?.geologic;
     if (!geologicGroup) return;
+
+    // Remove any previous hybrid zoom listeners
+    if (map._hybridZoomHandler) {
+        map.off('zoomend', map._hybridZoomHandler);
+        map._hybridZoomHandler = null;
+    }
 
     // Clear previous dynamic geology layers
     const layers = geologicGroup.getLayers();
@@ -324,8 +337,10 @@ export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendRea
         return;
     }
 
+    // 1. GEOJSON MODE
     if (projectConfig.geologyType === 'geojson') {
-        fetch(projectConfig.geologyData)
+        const geoJsonUrl = projectConfig.geologyData || projectConfig.lowResGeology;
+        fetch(geoJsonUrl)
             .then(res => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 return res.json();
@@ -335,9 +350,8 @@ export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendRea
                 const presentCodes = new Set();
                 if (geoJsonData.features && Array.isArray(geoJsonData.features)) {
                     geoJsonData.features.forEach(f => {
-                        const code = f.properties ? f.properties.Codierung : '';
+                        const code = f.properties ? (f.properties.Codierung || f.properties.symbol) : '';
                         if (code) {
-                            // Group sub-codes to base prefix (e.g. Qs2 -> Q, pC1 -> pC)
                             let baseKey = code;
                             if (code.startsWith('pC')) baseKey = 'pC';
                             else if (code.startsWith('Ks1')) baseKey = 'Ks1';
@@ -364,23 +378,24 @@ export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendRea
 
                 const geoLayer = L.geoJSON(geoJsonData, {
                     style: function (feature) {
-                        const code = feature.properties ? feature.properties.Codierung : '';
+                        const code = feature.properties ? (feature.properties.Codierung || feature.properties.symbol) : '';
                         return {
-                            fillColor: getJordanGeologyColor(code),
+                            fillColor: feature.properties?.fillColor || getJordanGeologyColor(code),
                             fillOpacity: 0.65,
                             color: '#475569',
                             weight: 1
                         };
                     },
                     onEachFeature: function (feature, layer) {
-                        if (feature.properties && feature.properties.Codierung) {
-                            const code = feature.properties.Codierung;
-                            let desc = code;
-                            if (code === 'Cs') desc = 'Burj Formation & Sandstone (DSL Ore Bed, Salib & Um Ishrin)';
-                            else if (code.startsWith('pC')) desc = 'Precambrian Basement / Granites';
-                            else if (code.startsWith('K')) desc = 'Amir, Evrona & Kurnub Formations (Cretaceous)';
-                            else if (code.startsWith('Q') || code.startsWith('q')) desc = 'Quaternary Alluvium & Sediments';
-                            layer.bindPopup(`<strong>Geological Formation (${code}):</strong><br/><em>${desc}</em>`);
+                        if (feature.properties && (feature.properties.Codierung || feature.properties.name_eng)) {
+                            const nameEng = feature.properties.name_eng || '';
+                            const nameHeb = feature.properties.name_heb || '';
+                            const code = feature.properties.Codierung || feature.properties.symbol || '';
+                            
+                            let content = `<strong>Geological Formation (${code}):</strong><br/>`;
+                            if (nameEng) content += `<em>${nameEng}</em><br/>`;
+                            if (nameHeb) content += `<span style="font-size: 11px; color: #64748b;">${nameHeb}</span>`;
+                            layer.bindPopup(content);
                         }
                     }
                 });
@@ -388,59 +403,145 @@ export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendRea
                 geologicGroup.addLayer(geoLayer);
             })
             .catch(err => {
-                console.error(`Failed to load GeoJSON from ${projectConfig.geologyData}:`, err);
+                console.error(`Failed to load GeoJSON from ${geoJsonUrl}:`, err);
                 if (typeof onLegendReady === 'function') onLegendReady([]);
             });
-    } else if (projectConfig.geologyType === 'external') {
-        const createLayer = (L.esri && L.esri.Vector && typeof L.esri.Vector.vectorTileLayer === 'function')
-            ? L.esri.Vector.vectorTileLayer
-            : (L.esri && typeof L.esri.vectorTileLayer === 'function' ? L.esri.vectorTileLayer : null);
+    }
 
-        if (createLayer) {
-            try {
-                const vectorLayer = createLayer(projectConfig.geologyData, {
-                    opacity: 0.8,
-                    style: function (style) {
-                        if (style) {
-                            style.sprite = `${projectConfig.geologyData}/resources/sprites/sprite`;
-                            style.glyphs = `${projectConfig.geologyData}/resources/fonts/{fontstack}/{range}.pbf`;
-                            if (style.sources && style.sources.esri) {
-                                style.sources.esri.bounds = [34.2642, 29.5044, 35.9622, 33.3407];
-                            }
-                            if (style.layers) {
-                                style.layers = style.layers.filter(l => !l.id.toLowerCase().includes('keymap'));
-                                style.layers.forEach(l => {
-                                    delete l.minzoom;
-                                    delete l.maxzoom;
-                                });
-                            }
-                        }
-                        return style;
+    // 2. HYBRID OR EXTERNAL VECTOR MODE
+    else if (projectConfig.geologyType === 'hybrid' || projectConfig.geologyType === 'external') {
+        const isHybrid = projectConfig.geologyType === 'hybrid' || !!projectConfig.lowResGeology;
+        const lowResUrl = projectConfig.lowResGeology || projectConfig.geologyData?.lowRes;
+        const highResUrl = projectConfig.highResGeology || projectConfig.geologyData?.highRes || projectConfig.geologyData;
+        const zoomThreshold = typeof projectConfig.zoomThreshold === 'number'
+            ? projectConfig.zoomThreshold
+            : (projectConfig.geologyData?.zoomThreshold || 11);
+        const attributionText = projectConfig.attribution || 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>';
+
+        if (isHybrid && lowResUrl) {
+            const geoCanvasRenderer = L.canvas({ padding: 0.5 });
+            let lowResGeoLayer = null;
+
+            function createLowResLayer(data) {
+                return L.geoJSON(data, {
+                    renderer: geoCanvasRenderer,
+                    style: function (feature) {
+                        return {
+                            fillColor: feature.properties?.fillColor || '#cbd5e1',
+                            fillOpacity: 0.70,
+                            color: '#64748b',
+                            weight: 0.5
+                        };
                     },
-                    attribution: 'Geology &copy; <a href="https://www.gov.il/he/departments/israel-geological-survey" target="_blank">Geological Survey of Israel (gov.il)</a>'
-                });
-
-                if (vectorLayer) {
-                    const origOnRemove = vectorLayer.onRemove;
-                    vectorLayer.onRemove = function (mapInstance) {
-                        try {
-                            if (origOnRemove) {
-                                origOnRemove.call(this, mapInstance || this._map);
-                            }
-                        } catch (e) {
-                            console.warn('Suppressed vectorLayer onRemove error:', e);
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            const nameEng = feature.properties.name_eng || 'Geological Formation';
+                            const nameHeb = feature.properties.name_heb || '';
+                            const symbol = feature.properties.symbol || '';
+                            layer.bindPopup(`
+                                <div style="font-family: 'Inter', sans-serif; padding: 2px 4px;">
+                                    <span style="font-size: 10px; font-weight: 600; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Geological Unit</span>
+                                    <strong style="font-size: 13px; color: #0f172a;">${nameEng}</strong>
+                                    ${nameHeb ? `<div style="font-size: 11px; color: #475569; margin-top: 2px;">${nameHeb} ${symbol ? `(${symbol})` : ''}</div>` : ''}
+                                </div>
+                            `);
                         }
-                    };
-                    window._gsiVectorTileLayer = vectorLayer;
-                    geologicGroup.addLayer(vectorLayer);
-                }
+                    }
+                });
+            }
 
-                if (typeof onLegendReady === 'function') {
-                    onLegendReady(GSI_DEFAULT_LEGEND);
+            function updateHybridZoom() {
+                if (!lowResGeoLayer) return;
+                const zoom = map.getZoom();
+                if (zoom < zoomThreshold) {
+                    if (!geologicGroup.hasLayer(lowResGeoLayer)) {
+                        geologicGroup.addLayer(lowResGeoLayer);
+                    }
+                } else {
+                    if (geologicGroup.hasLayer(lowResGeoLayer)) {
+                        geologicGroup.removeLayer(lowResGeoLayer);
+                    }
                 }
-            } catch (err) {
-                console.error(`Failed to create external vector layer from ${projectConfig.geologyData}:`, err);
-                if (typeof onLegendReady === 'function') onLegendReady([]);
+            }
+
+            // Load and cache low-res GeoJSON
+            const loadGeoJsonPromise = geoJsonCache.has(lowResUrl)
+                ? Promise.resolve(geoJsonCache.get(lowResUrl))
+                : fetch(lowResUrl)
+                    .then(r => {
+                        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                        return r.json();
+                    })
+                    .then(data => {
+                        geoJsonCache.set(lowResUrl, data);
+                        return data;
+                    });
+
+            loadGeoJsonPromise
+                .then(data => {
+                    lowResGeoLayer = createLowResLayer(data);
+                    updateHybridZoom();
+
+                    map._hybridZoomHandler = updateHybridZoom;
+                    map.on('zoomend', map._hybridZoomHandler);
+                })
+                .catch(err => {
+                    console.warn(`Could not load low-res geology GeoJSON from ${lowResUrl}:`, err);
+                });
+        }
+
+        // Initialize high-res external vector tile layer
+        if (highResUrl) {
+            const createLayer = (L.esri && L.esri.Vector && typeof L.esri.Vector.vectorTileLayer === 'function')
+                ? L.esri.Vector.vectorTileLayer
+                : (L.esri && typeof L.esri.vectorTileLayer === 'function' ? L.esri.vectorTileLayer : null);
+
+            if (createLayer) {
+                try {
+                    const vectorLayer = createLayer(highResUrl, {
+                        opacity: 0.8,
+                        style: function (style) {
+                            if (style) {
+                                style.sprite = `${highResUrl}/resources/sprites/sprite`;
+                                style.glyphs = `${highResUrl}/resources/fonts/{fontstack}/{range}.pbf`;
+                                if (style.sources && style.sources.esri) {
+                                    style.sources.esri.bounds = [34.2642, 29.5044, 35.9622, 33.3407];
+                                }
+                                if (style.layers) {
+                                    style.layers = style.layers.filter(l => !l.id.toLowerCase().includes('keymap'));
+                                    style.layers.forEach(l => {
+                                        delete l.minzoom;
+                                        delete l.maxzoom;
+                                    });
+                                }
+                            }
+                            return style;
+                        },
+                        attribution: attributionText
+                    });
+
+                    if (vectorLayer) {
+                        const origOnRemove = vectorLayer.onRemove;
+                        vectorLayer.onRemove = function (mapInstance) {
+                            try {
+                                if (origOnRemove) {
+                                    origOnRemove.call(this, mapInstance || this._map);
+                                }
+                            } catch (e) {
+                                console.warn('Suppressed vectorLayer onRemove error:', e);
+                            }
+                        };
+                        window._gsiVectorTileLayer = vectorLayer;
+                        geologicGroup.addLayer(vectorLayer);
+                    }
+
+                    if (typeof onLegendReady === 'function') {
+                        onLegendReady(projectConfig.legend || GSI_DEFAULT_LEGEND);
+                    }
+                } catch (err) {
+                    console.error(`Failed to create external vector layer from ${highResUrl}:`, err);
+                    if (typeof onLegendReady === 'function') onLegendReady([]);
+                }
             }
         }
     }

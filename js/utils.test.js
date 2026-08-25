@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatYearLabel, makeLinksClickable } from './utils.js';
+import { formatYearLabel, makeLinksClickable, calculateYearFromProgress } from './utils.js';
 
 describe('GeoTrends - Utilities Unit Tests', () => {
     describe('formatYearLabel()', () => {
@@ -35,6 +35,23 @@ describe('GeoTrends - Utilities Unit Tests', () => {
         it('should return empty string for empty inputs', () => {
             expect(makeLinksClickable('')).toBe('');
             expect(makeLinksClickable(null)).toBe('');
+        });
+    });
+
+    describe('calculateYearFromProgress()', () => {
+        it('should compute the correct year at 0, 0.5, and 1.0 progress', () => {
+            expect(calculateYearFromProgress(0, -1000, 2000)).toBe(-1000);
+            expect(calculateYearFromProgress(0.5, -1000, 2000)).toBe(500);
+            expect(calculateYearFromProgress(1.0, -1000, 2000)).toBe(2000);
+        });
+
+        it('should clamp progress below 0 and above 1', () => {
+            expect(calculateYearFromProgress(-0.2, -1500, 500)).toBe(-1500);
+            expect(calculateYearFromProgress(1.5, -1500, 500)).toBe(500);
+        });
+
+        it('should handle fractional percentages and round to nearest integer', () => {
+            expect(calculateYearFromProgress(0.333, 0, 100)).toBe(33);
         });
     });
 });

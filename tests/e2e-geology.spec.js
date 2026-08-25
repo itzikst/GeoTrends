@@ -118,9 +118,9 @@ test.describe('Geology View & Project Config E2E Tests', () => {
         // Verify no uncaught JavaScript exceptions occurred
         expect(pageErrors).toEqual([]);
 
-        // Verify dynamic Hebrew project header from iron_age.json
+        // Verify dynamic project header from iron_age.json
         const headerText = await page.textContent('#map-header');
-        expect(headerText.trim()).toBe('שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל');
+        expect(headerText.trim()).toBe('Samaria and Jezreel Valley: Iron Age Urban centers');
 
         // Verify active basemap button
         const activeBasemap = await page.getAttribute('.basemap-btn.active', 'data-basemap');
@@ -155,7 +155,7 @@ test.describe('Geology View & Project Config E2E Tests', () => {
 
         expect(itemTexts).toContain('Timna Valley Archaeological Sites & Features');
         expect(itemTexts).toContain('Faynan Archaeological District Mining & Metallurgy');
-        expect(itemTexts).toContain('שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל');
+        expect(itemTexts).toContain('Samaria and Jezreel Valley: Iron Age Urban centers');
     });
 
     test('Opening URL with ?year=-1200 initializes app at 1200 BC', async ({ page }) => {
@@ -186,6 +186,77 @@ test.describe('Geology View & Project Config E2E Tests', () => {
         // Verify active basemap is geologic
         const activeBasemap = await page.getAttribute('.basemap-btn.active', 'data-basemap');
         expect(activeBasemap).toBe('geologic');
+    });
+
+    test('Clicking on the time ruler updates current year and time indicator', async ({ page }) => {
+        await page.goto('http://localhost:8080/timna', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#time-ruler', { timeout: 10000 });
+        await page.waitForTimeout(1500);
+
+        const initialYear = await page.textContent('#current-year-value');
+
+        // Click near the middle of the time ruler
+        const rulerBox = await page.locator('#time-ruler').boundingBox();
+        expect(rulerBox).not.toBeNull();
+
+        await page.mouse.click(rulerBox.x + rulerBox.width * 0.5, rulerBox.y + rulerBox.height * 0.5);
+        await page.waitForTimeout(500);
+
+        const updatedYear = await page.textContent('#current-year-value');
+        expect(updatedYear).not.toBe(initialYear);
+
+        // Click near the 80% mark on the ruler
+        await page.mouse.click(rulerBox.x + rulerBox.width * 0.8, rulerBox.y + rulerBox.height * 0.5);
+        await page.waitForTimeout(500);
+
+        const finalYear = await page.textContent('#current-year-value');
+        expect(finalYear).not.toBe(updatedYear);
+    });
+
+    test('Switching repositories resets year to minimum year of the new repository', async ({ page }) => {
+        // 1. Open Timna at an advanced year (e.g. 1200 BC)
+        await page.goto('http://localhost:8080/timna?year=-1200', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#current-year-value', { timeout: 10000 });
+        await page.waitForTimeout(1500);
+
+        const timnaYear = await page.textContent('#current-year-value');
+        expect(timnaYear.trim()).toBe('1200 BC');
+
+        // 2. Open dropdown and switch to Faynan
+        await page.click('#open-btn');
+        await page.waitForSelector('#open-dropdown .dropdown-item', { timeout: 5000 });
+        
+        // Click Faynan project
+        const faynanItem = page.locator('#open-dropdown .dropdown-item', { hasText: 'Faynan Archaeological District' });
+        await faynanItem.click();
+
+        // 3. Wait for data to load and verify year resets to Faynan's minYear (1500 BC / -1500)
+        await page.waitForFunction(() => {
+            const header = document.querySelector('#map-header');
+            return header && header.textContent.includes('Faynan');
+        }, { timeout: 10000 });
+        await page.waitForTimeout(1000);
+
+        const faynanYear = await page.textContent('#current-year-value');
+        expect(faynanYear.trim()).toBe('1500 BC');
+    });
+
+    test('Hybrid Mode: low-res Israel GeoJSON renders when zoomed out in Geologic view', async ({ page }) => {
+        await page.goto('http://localhost:8080/timna?view=geologic', { waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('.leaflet-tile-pane img', { timeout: 10000 });
+        await page.waitForTimeout(2000);
+
+        // Zoom out to zoom level 8 (where GSI vector tiles have no data)
+        await page.evaluate(() => window.map.setZoom(8));
+        await page.waitForTimeout(2000);
+
+        // Verify that the low-res GeoJSON overlay canvas or paths are rendered on map
+        const hasOverlayElements = await page.evaluate(() => {
+            const canvasCount = document.querySelectorAll('.leaflet-overlay-pane canvas').length;
+            const pathCount = document.querySelectorAll('.leaflet-overlay-pane svg path').length;
+            return canvasCount > 0 || pathCount > 0;
+        });
+        expect(hasOverlayElements).toBe(true);
     });
 
 });

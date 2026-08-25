@@ -1,4 +1,4 @@
-import { formatYearLabel, makeLinksClickable } from './js/utils.js';
+import { formatYearLabel, makeLinksClickable, calculateYearFromProgress } from './js/utils.js';
 import { loadCSV, loadProjectConfig, fetchProjectsList, fetchServerFileList, normalizeLocationData, determineYearBounds } from './js/data-loader.js';
 import { initMap, switchBaseMap, setProjectGeology, getIconForType, getIconKeyForType, starIcon, destroyIcon } from './js/map-manager.js';
 import { parseAppUrl, updateUrlState, BASEMAP_TO_VIEW, VIEW_TO_BASEMAP, FILE_TO_REPO } from './js/url-parser.js';
@@ -161,16 +161,27 @@ let initialTargetYear = null;
 
 // Load project according to URL repo and view parameters scheme app-url/repo?view=topo|geo|sattelites&year=YYYY
 function loadProject(repo, viewParam = null, basemapKey = null, targetYear = null, updateUrl = false) {
+    if (typeof targetYear === 'boolean') {
+        updateUrl = targetYear;
+        targetYear = null;
+    }
+
+    pauseAnimation();
     currentRepo = repo || currentRepo;
     if (viewParam) currentViewParam = viewParam;
+
+    // Set initialTargetYear to targetYear (or null when switching repos so it resets to minYear of new repository)
     if (targetYear !== null && targetYear !== undefined && !isNaN(targetYear)) {
         initialTargetYear = targetYear;
+    } else {
+        initialTargetYear = null;
     }
+
     const targetBasemap = basemapKey || VIEW_TO_BASEMAP[currentViewParam] || 'topo';
 
     setBasemapUIAndLayer(targetBasemap, false);
     if (updateUrl) {
-        updateUrlState(currentRepo, currentViewParam, targetYear, false);
+        updateUrlState(currentRepo, currentViewParam, targetYear, true);
     }
 
     loadProjectConfig(currentRepo)
@@ -257,7 +268,7 @@ if (openBtn && openDropdown) {
                         item.addEventListener('click', (ev) => {
                             ev.stopPropagation();
                             openDropdown.style.display = 'none';
-                            loadProject(proj.repo, currentViewParam, null, true);
+                            loadProject(proj.repo, currentViewParam, null, null, true);
                         });
                         
                         openDropdown.appendChild(item);
@@ -280,6 +291,8 @@ if (openBtn && openDropdown) {
 fileInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
+        pauseAnimation();
+        initialTargetYear = null;
         Papa.parse(file, {
             header: true,
             dynamicTyping: true,
@@ -679,6 +692,65 @@ function drawPeriodBands(minY, maxY) {
         }
     });
 }
+
+// 3b. Time Ruler Interactive Click & Drag Scrubbing
+(function initTimeRulerInteraction() {
+    const timeRulerContainer = document.getElementById('time-ruler-container');
+    if (!timeRulerContainer) return;
+
+    let isDraggingRuler = false;
+
+    function handleRulerInteraction(e) {
+        if (!locations || locations.length === 0 || maxYear <= minYear) return;
+        const timeRuler = document.getElementById('time-ruler');
+        if (!timeRuler) return;
+
+        const rect = timeRuler.getBoundingClientRect();
+        if (rect.width <= 0) return;
+
+        const clientX = (e.touches && e.touches.length > 0) ? e.touches[0].clientX : e.clientX;
+        const progress = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+        const newYear = calculateYearFromProgress(progress, minYear, maxYear);
+
+        pauseAnimation();
+        currentYear = newYear;
+        syncUI();
+        updateUrlState(currentRepo, currentViewParam, currentYear, false);
+    }
+
+    timeRulerContainer.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        isDraggingRuler = true;
+        handleRulerInteraction(e);
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDraggingRuler) return;
+        handleRulerInteraction(e);
+    });
+
+    window.addEventListener('mouseup', () => {
+        isDraggingRuler = false;
+    });
+
+    timeRulerContainer.addEventListener('touchstart', (e) => {
+        isDraggingRuler = true;
+        handleRulerInteraction(e);
+    }, { passive: true });
+
+    window.addEventListener('touchmove', (e) => {
+        if (!isDraggingRuler) return;
+        handleRulerInteraction(e);
+    }, { passive: true });
+
+    window.addEventListener('touchend', () => {
+        isDraggingRuler = false;
+    });
+
+    window.addEventListener('touchcancel', () => {
+        isDraggingRuler = false;
+    });
+})();
 
 // 4. Update Map Markers
 function updateMarkers(year) {

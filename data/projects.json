@@ -7,7 +7,7 @@
   },
   {
     "repo": "iron_age",
-    "header": "שינויים במערך העירוני בשומרון וביזרעאל בתקופת הברזל",
+    "header": "Samaria and Jezreel Valley: Iron Age Urban centers",
     "dataFile": "data/iron_age_cities.csv",
     "configFile": "data/iron_age.json"
   },
