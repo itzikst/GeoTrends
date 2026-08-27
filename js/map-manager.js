@@ -118,6 +118,10 @@ export function getIconKeyForType(type) {
  * @returns {Object} { map, markerGroup, highlightLayer, baseMapLayers }
  */
 export function initMap(domId, esriApiKey) {
+    if (esriApiKey) {
+        window._esriApiKey = esriApiKey;
+    }
+
     // Leaflet CDN Icon Path Fix (ensure loaded globally)
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
@@ -130,6 +134,10 @@ export function initMap(domId, esriApiKey) {
         maxZoom: 18
     }).setView([32.5, 36.0], 8); // Center on Decapolis Region
 
+    const tokenParam = (esriApiKey && typeof esriApiKey === 'string' && esriApiKey.trim().length > 0)
+        ? `?token=${encodeURIComponent(esriApiKey.trim())}`
+        : '';
+
     // 1. Topographic Map Layer (Voyager + ESRI Hillshade)
     const topoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
@@ -137,7 +145,7 @@ export function initMap(domId, esriApiKey) {
         maxZoom: 20
     });
 
-    const topoHillshade = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
+    const topoHillshade = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
         maxZoom: 16,
         attribution: 'Tiles &copy; Esri, USGS',
         className: 'hillshade-layer'
@@ -146,12 +154,12 @@ export function initMap(domId, esriApiKey) {
     const topoGroup = L.layerGroup([topoVoyager, topoHillshade]);
 
     // 2. Satellite View Layer (Esri World Imagery + Imagery Reference Labels)
-    const satImagery = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    const satImagery = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
         attribution: 'Tiles &copy; Esri',
         maxZoom: 19
     });
 
-    const satLabels = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+    const satLabels = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
         attribution: 'Labels &copy; Esri',
         maxZoom: 19
     });
@@ -165,7 +173,7 @@ export function initMap(domId, esriApiKey) {
         maxZoom: 20
     });
 
-    const geologicHillshade = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}', {
+    const geologicHillshade = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
         maxZoom: 16,
         attribution: 'Tiles &copy; Esri, USGS',
         className: 'hillshade-layer'
@@ -498,7 +506,7 @@ export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendRea
 
             if (createLayer) {
                 try {
-                    const vectorLayer = createLayer(highResUrl, {
+                    const layerOptions = {
                         opacity: 0.8,
                         style: function (style) {
                             if (style) {
@@ -518,7 +526,14 @@ export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendRea
                             return style;
                         },
                         attribution: attributionText
-                    });
+                    };
+
+                    if (window._esriApiKey && typeof window._esriApiKey === 'string' && window._esriApiKey.trim().length > 0) {
+                        layerOptions.apikey = window._esriApiKey.trim();
+                        layerOptions.token = window._esriApiKey.trim();
+                    }
+
+                    const vectorLayer = createLayer(highResUrl, layerOptions);
 
                     if (vectorLayer) {
                         const origOnRemove = vectorLayer.onRemove;
