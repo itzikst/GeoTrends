@@ -138,11 +138,10 @@ export function initMap(domId, esriApiKey) {
         ? `?token=${encodeURIComponent(esriApiKey.trim())}`
         : '';
 
-    // 1. Topographic Map Layer (Voyager + ESRI Hillshade)
-    const topoVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
+    // 1. Topographic Map Layer (Esri World Topo + ESRI Hillshade)
+    const topoBase = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
+        attribution: 'Tiles &copy; Esri, DeLorme, NAVTEQ, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, and the GIS User Community',
+        maxZoom: 19
     });
 
     const topoHillshade = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
@@ -151,7 +150,7 @@ export function initMap(domId, esriApiKey) {
         className: 'hillshade-layer'
     });
 
-    const topoGroup = L.layerGroup([topoVoyager, topoHillshade]);
+    const topoGroup = L.layerGroup([topoBase, topoHillshade]);
 
     // 2. Satellite View Layer (Esri World Imagery + Imagery Reference Labels)
     const satImagery = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
@@ -166,11 +165,10 @@ export function initMap(domId, esriApiKey) {
 
     const satelliteGroup = L.layerGroup([satImagery, satLabels]);
 
-    // 3. Geologic Map Layer (Voyager + ESRI Hillshade Base + High-Detail Geology Layers on Top)
-    const geologicVoyager = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
+    // 3. Geologic Map Layer (Esri World Topo Base + Hillshade + High-Detail Geology Layers on Top)
+    const geologicBase = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 19
     });
 
     const geologicHillshade = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
@@ -181,7 +179,7 @@ export function initMap(domId, esriApiKey) {
 
     // Dynamic overlay container for active project's geology (single geology layer per project)
     const activeGeologyOverlay = L.layerGroup();
-    const geologicGroup = L.layerGroup([geologicVoyager, geologicHillshade, activeGeologyOverlay]);
+    const geologicGroup = L.layerGroup([geologicBase, geologicHillshade, activeGeologyOverlay]);
 
     const baseMapLayers = {
         topo: topoGroup,
@@ -528,7 +526,10 @@ export function setProjectGeology(map, baseMapLayers, projectConfig, onLegendRea
                         attribution: attributionText
                     };
 
-                    if (window._esriApiKey && typeof window._esriApiKey === 'string' && window._esriApiKey.trim().length > 0) {
+                    // Only pass ArcGIS Online API keys to official ArcGIS Online endpoints (*.arcgis.com)
+                    // Third-party servers (like GSI egozi.gsi.gov.il) reject ArcGIS Online tokens with 498 Invalid Token
+                    const isArcGisOnline = highResUrl.includes('arcgis.com') || highResUrl.includes('arcgisonline.com');
+                    if (isArcGisOnline && window._esriApiKey && typeof window._esriApiKey === 'string' && window._esriApiKey.trim().length > 0) {
                         layerOptions.apikey = window._esriApiKey.trim();
                         layerOptions.token = window._esriApiKey.trim();
                     }
