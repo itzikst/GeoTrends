@@ -140,7 +140,7 @@ export function initMap(domId, esriApiKey) {
 
     // 1. Topographic Map Layer (Esri World Topo + ESRI Hillshade)
     const topoBase = L.tileLayer(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}${tokenParam}`, {
-        attribution: 'Tiles &copy; Esri, DeLorme, NAVTEQ, TomTom, Intermap, increment P Corp., GEBCO, USGS, FAO, NPS, NRCAN, GeoBase, IGN, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), swisstopo, MapmyIndia, and the GIS User Community',
+        attribution: 'Tiles &copy; Esri, USGS',
         maxZoom: 19
     });
 
